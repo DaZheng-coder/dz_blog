@@ -95,20 +95,20 @@ export function ChatPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate("/")}
-                className="px-3 py-1.5 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-1.5"
+                className="cursor-pointer hover:scale-105 text-black px-3 py-1.5 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-1.5"
                 title="返回首页"
               >
                 <span>🏠</span>
-                <span className="hidden sm:inline text-black">首页</span>
+                <span className="hidden sm:inline">首页</span>
               </button>
 
               {messages.length > 0 && (
                 <button
                   onClick={handleClearChat}
-                  className="px-3 py-1.5 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-1.5"
+                  className="cursor-pointer hover:scale-105 text-black px-3 py-1.5 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-1.5"
                 >
                   <span>🔄</span>
-                  <span className="hidden sm:inline text-black">重新开始</span>
+                  <span className="hidden sm:inline">重新开始</span>
                 </button>
               )}
             </div>
@@ -156,7 +156,7 @@ export function ChatPage() {
           </div>
 
           {/* 消息输入区域 - 固定在底部但在中间区域内 */}
-          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+          <div className="flex-shrink-0 border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl mb-6">
             <div className="px-4 py-4">
               <MessageInput
                 onSendMessage={handleSendMessage}
