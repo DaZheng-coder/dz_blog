@@ -1,8 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import reactLogo from "../assets/react.svg";
-import viteLogo from "/vite.svg";
-
 /**
  * 首页组件
  * 展示项目介绍、技术栈特性和 AI 对话入口
@@ -15,55 +12,17 @@ export function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-16">
         {/* Header */}
-        <header className="text-center mb-16">
+        {/* <header className="text-center mb-16">
           <h1 className="text-5xl font-bold text-gray-800 dark:text-white mb-4">
             AI Blog
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300">
             基于 React + Vite + TypeScript + TailwindCSS
           </p>
-        </header>
-
-        {/* Logo Section */}
-        <div className="flex justify-center items-center gap-8 mb-12">
-          <a
-            href="https://vite.dev"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-transform hover:scale-110"
-          >
-            <img src={viteLogo} className="h-24 w-24" alt="Vite logo" />
-          </a>
-          <a
-            href="https://react.dev"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-transform hover:scale-110 animate-spin-slow"
-          >
-            <img src={reactLogo} className="h-24 w-24" alt="React logo" />
-          </a>
-        </div>
+        </header> */}
 
         {/* Card Section */}
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-8">
-            <div className="text-center">
-              <button
-                onClick={() => setCount((count) => count + 1)}
-                className="cursor-pointer bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 px-8 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
-              >
-                计数器: {count}
-              </button>
-              <p className="mt-6 text-gray-600 dark:text-gray-300">
-                编辑{" "}
-                <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm font-mono">
-                  src/App.tsx
-                </code>{" "}
-                并保存以测试 HMR
-              </p>
-            </div>
-          </div>
-
           {/* AI 智能简历 Feature */}
           <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl shadow-2xl p-8 mb-8 text-white">
             <div className="flex flex-col md:flex-row items-center gap-6">
@@ -126,11 +85,6 @@ export function HomePage() {
               </p>
             </div>
           </div>
-
-          {/* Footer */}
-          <p className="text-center text-gray-500 dark:text-gray-400 text-sm">
-            点击上方 Logo 了解更多技术细节
-          </p>
         </div>
       </div>
     </div>
