@@ -7,240 +7,20 @@ import { MindMapZoomIndicator } from "./MindMapZoomIndicator";
 import { MindMapDragGhost } from "./MindMapDragGhost";
 import { MindMapNodeLayer } from "./MindMapNodeLayer";
 import { MindMapDropPreview } from "./MindMapDropPreview";
-import { isSamePreviewPosition, type PreviewPosition } from "./types";
 import { MindMapConnections } from "./MindMapConnections";
 import {
-  HIT_TEST_CELL_SIZE,
-  buildHitBuckets,
   buildNodeMap,
-  buildParentIdMap,
-  buildVisibleChildrenMap,
-  collectSubtreeBottom,
   collectSubtreeBounds,
-  collectVisibleNodeBounds,
-  getHitBucketKey,
   getWorldViewport,
   type SubtreeBounds,
 } from "./geometry";
 import { useMindMapShortcuts } from "./hooks/useMindMapShortcuts";
+import { useMindMapCanvasInteraction } from "./hooks/useMindMapCanvasInteraction";
 
 interface MindMapProps {
   initialData: MindMapNodeType;
   width?: number;
   height?: number;
-}
-
-function getInsertIndexByPointerY(
-  pointerY: number,
-  visibleChildren: string[],
-  positions: Map<string, { y: number; height: number }>,
-  targetPos?: { y: number; height: number }
-): number {
-  if (visibleChildren.length === 0) {
-    return 0;
-  }
-
-  const anchors = visibleChildren
-    .map((id) => {
-      const pos = positions.get(id);
-      if (!pos) return null;
-      return {
-        top: pos.y - pos.height / 2,
-        bottom: pos.y + pos.height / 2,
-        center: pos.y,
-      };
-    })
-    .filter((item): item is { top: number; bottom: number; center: number } =>
-      Boolean(item)
-    );
-
-  if (anchors.length === 0) {
-    return 0;
-  }
-
-  if (anchors.length === 1) {
-    return pointerY < anchors[0].center ? 0 : 1;
-  }
-
-  // 仅当鼠标明显位于“父节点顶部”和“第一子节点顶部”之上时，才判为最前插入。
-  // 避免第1和第2子节点间距很小时，被错误吸附到 index 0。
-  if (targetPos) {
-    const parentTop = targetPos.y - targetPos.height / 2;
-    const firstChildTop = anchors[0].top;
-    const frontBoundary = Math.min(parentTop - 4, firstChildTop - 8);
-    if (pointerY <= frontBoundary) {
-      return 0;
-    }
-  }
-
-  if (pointerY <= anchors[0].top) {
-    return 0;
-  }
-
-  const last = anchors[anchors.length - 1];
-  if (pointerY >= last.bottom) {
-    return anchors.length;
-  }
-
-  for (let i = 0; i < anchors.length - 1; i++) {
-    const current = anchors[i];
-    const next = anchors[i + 1];
-    const boundaryY = (current.center + next.center) / 2;
-    if (pointerY <= boundaryY) {
-      return i + 1;
-    }
-  }
-
-  return anchors.length;
-}
-
-function getPreviewYByInsertIndex(
-  insertIndex: number,
-  visibleChildren: string[],
-  positions: Map<string, { y: number; height: number }>,
-  subtreeBottomMap: Map<string, number>,
-  subtreeBoundsMap: Map<string, SubtreeBounds>,
-  fallbackY: number
-): number {
-  if (visibleChildren.length === 0) {
-    return fallbackY;
-  }
-
-  if (insertIndex <= 0) {
-    const firstId = visibleChildren[0];
-    const firstBounds = subtreeBoundsMap.get(firstId);
-    if (firstBounds) {
-      return firstBounds.minY - 40;
-    }
-    const firstPos = positions.get(firstId);
-    return firstPos ? firstPos.y - 40 : fallbackY;
-  }
-
-  if (insertIndex >= visibleChildren.length) {
-    const lastId = visibleChildren[visibleChildren.length - 1];
-    const lastPos = positions.get(lastId);
-    if (lastPos) {
-      const subtreeBottom =
-        subtreeBottomMap.get(lastId) ?? lastPos.y + lastPos.height / 2;
-      return subtreeBottom + 40;
-    }
-    return fallbackY;
-  }
-
-  const prevId = visibleChildren[insertIndex - 1];
-  const nextId = visibleChildren[insertIndex];
-  const prevBounds = subtreeBoundsMap.get(prevId);
-  const nextBounds = subtreeBoundsMap.get(nextId);
-
-  if (prevBounds && nextBounds) {
-    return (prevBounds.maxY + nextBounds.minY) / 2;
-  }
-
-  const prevPos = positions.get(prevId);
-  const nextPos = positions.get(nextId);
-  if (prevPos && nextPos) {
-    return (prevPos.y + nextPos.y) / 2;
-  }
-
-  return fallbackY;
-}
-
-function resolveDropTargetInBlankArea(params: {
-  worldX: number;
-  worldY: number;
-  hitCol: number;
-  hitRow: number;
-  hitTestBuckets: Map<string, Array<{ id: string }>>;
-  positions: Map<string, { x: number; y: number; width: number; height: number; visible: boolean }>;
-  visibleChildrenMap: Map<string, string[]>;
-  parentIdMap: Map<string, string | null>;
-  draggedNodeId: string;
-  subtreeBottomMap: Map<string, number>;
-  subtreeBoundsMap: Map<string, SubtreeBounds>;
-}): string | null {
-  const {
-    worldX,
-    worldY,
-    hitCol,
-    hitRow,
-    hitTestBuckets,
-    positions,
-    visibleChildrenMap,
-    parentIdMap,
-    draggedNodeId,
-    subtreeBottomMap,
-    subtreeBoundsMap,
-  } = params;
-
-  const candidateIds = new Set<string>();
-  const radius = 2;
-
-  for (let col = hitCol - radius; col <= hitCol + radius; col++) {
-    for (let row = hitRow - radius; row <= hitRow + radius; row++) {
-      const bucket = hitTestBuckets.get(getHitBucketKey(col, row));
-      if (!bucket) continue;
-      for (const item of bucket) {
-        candidateIds.add(item.id);
-        const parentId = parentIdMap.get(item.id);
-        if (parentId) {
-          candidateIds.add(parentId);
-        }
-      }
-    }
-  }
-
-  let bestTargetId: string | null = null;
-  let bestScore = Number.POSITIVE_INFINITY;
-
-  for (const candidateId of candidateIds) {
-    if (candidateId === draggedNodeId) continue;
-    const pos = positions.get(candidateId);
-    if (!pos || !pos.visible) continue;
-
-    const visibleChildren = visibleChildrenMap.get(candidateId) || [];
-
-    if (visibleChildren.length > 0) {
-      const firstId = visibleChildren[0];
-      const lastId = visibleChildren[visibleChildren.length - 1];
-      const firstChildPos = positions.get(firstId);
-      if (!firstChildPos) continue;
-
-      const firstBounds = subtreeBoundsMap.get(firstId);
-      const minY = (firstBounds?.minY ?? firstChildPos.y - firstChildPos.height / 2) - 140;
-      const maxY = (subtreeBottomMap.get(lastId) ?? firstChildPos.y + firstChildPos.height / 2) + 140;
-      const minX = pos.x + pos.width / 2 - 60;
-      const maxX = firstChildPos.x + 180;
-
-      if (worldX < minX || worldX > maxX || worldY < minY || worldY > maxY) {
-        continue;
-      }
-
-      const score = Math.abs(worldX - firstChildPos.x) + Math.abs(worldY - pos.y) * 0.2;
-      if (score < bestScore) {
-        bestScore = score;
-        bestTargetId = candidateId;
-      }
-      continue;
-    }
-
-    const centerX = pos.x + pos.width / 2 + 80;
-    const minX = pos.x - pos.width / 2 - 40;
-    const maxX = centerX + 120;
-    const minY = pos.y - Math.max(pos.height, 140) / 2;
-    const maxY = pos.y + Math.max(pos.height, 140) / 2;
-
-    if (worldX < minX || worldX > maxX || worldY < minY || worldY > maxY) {
-      continue;
-    }
-
-    const score = Math.abs(worldX - centerX) + Math.abs(worldY - pos.y) * 0.3;
-    if (score < bestScore) {
-      bestScore = score;
-      bestTargetId = candidateId;
-    }
-  }
-
-  return bestTargetId;
 }
 
 /**
@@ -270,55 +50,19 @@ export function MindMap({
   const positions = useLayout(rootNode);
 
   const nodeMap = useMemo(() => buildNodeMap(rootNode), [rootNode]);
-  const parentIdMap = useMemo(() => buildParentIdMap(rootNode), [rootNode]);
-
-  const visibleNodeBounds = useMemo(
-    () => collectVisibleNodeBounds(positions),
-    [positions]
-  );
-  const hitTestBuckets = useMemo(
-    () => buildHitBuckets(visibleNodeBounds, HIT_TEST_CELL_SIZE),
-    [visibleNodeBounds]
-  );
-
-  const subtreeBottomMap = useMemo(() => {
-    if (!rootNode) {
-      return new Map<string, number>();
-    }
-    return collectSubtreeBottom(rootNode, positions);
-  }, [rootNode, positions]);
   const subtreeBoundsMap = useMemo(() => {
     if (!rootNode) {
       return new Map<string, SubtreeBounds>();
     }
     return collectSubtreeBounds(rootNode, positions);
   }, [rootNode, positions]);
-  const visibleChildrenMap = useMemo(
-    () => buildVisibleChildrenMap(nodeMap, positions),
-    [nodeMap, positions]
-  );
 
   const [scale, setScale] = useState(1);
   const [translateX, setTranslateX] = useState(width / 2);
   const [translateY, setTranslateY] = useState(height / 2);
 
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [panStartTranslate, setPanStartTranslate] = useState({ x: 0, y: 0 });
-
-  const [isDraggingNode, setIsDraggingNode] = useState(false);
-  const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-  const [dropInsertIndex, setDropInsertIndex] = useState<number | null>(null);
-  const [dragMousePos, setDragMousePos] = useState({ x: 0, y: 0 });
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [previewPosition, setPreviewPosition] =
-    useState<PreviewPosition | null>(null);
-
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const pendingPointerRef = useRef<{ x: number; y: number } | null>(null);
-  const pointerFrameRef = useRef<number | null>(null);
   const hasAutoCenteredRef = useRef(false);
   const lastRootIdRef = useRef<string | null>(null);
   const viewRef = useRef({
@@ -327,9 +71,6 @@ export function MindMap({
     translateY: height / 2,
   });
   const viewportSizeRef = useRef({ width, height });
-  const panPreviewRef = useRef<{ x: number; y: number } | null>(null);
-  const enableLargeNodePanOptimization = nodeMap.size > 500;
-  const isInteracting = isPanning || isDraggingNode;
   const worldViewport = useMemo(
     () => getWorldViewport(translateX, translateY, scale, width, height),
     [translateX, translateY, scale, width, height]
@@ -345,6 +86,34 @@ export function MindMap({
     },
     []
   );
+
+  const {
+    enableLargeNodePanOptimization,
+    isPanning,
+    isDraggingNode,
+    draggedNodeId,
+    dropTargetId,
+    dragMousePos,
+    dragOffset,
+    previewPosition,
+    handleMouseDown,
+    handleStartDrag,
+  } = useMindMapCanvasInteraction({
+    svgRef,
+    rootNode,
+    positions,
+    nodeMap,
+    subtreeBoundsMap,
+    scale,
+    translateX,
+    translateY,
+    viewRef,
+    applyTransform,
+    setTranslateX,
+    setTranslateY,
+    moveNode,
+  });
+  const isInteracting = isPanning || isDraggingNode;
 
   useEffect(() => {
     viewRef.current = { scale, translateX, translateY };
@@ -433,294 +202,6 @@ export function MindMap({
       setTranslateY(mouseY - worldY * newScale);
     },
     [scale, translateX, translateY]
-  );
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (
-        e.target === svgRef.current ||
-        (e.target as Element).tagName === "svg"
-      ) {
-        setIsPanning(true);
-        setPanStart({ x: e.clientX, y: e.clientY });
-        if (enableLargeNodePanOptimization) {
-          setPanStartTranslate({
-            x: viewRef.current.translateX,
-            y: viewRef.current.translateY,
-          });
-          panPreviewRef.current = null;
-        } else {
-          setPanStartTranslate({ x: translateX, y: translateY });
-        }
-      }
-    },
-    [enableLargeNodePanOptimization, translateX, translateY]
-  );
-
-  const processPointerMove = useCallback(
-    (clientX: number, clientY: number) => {
-      if (isPanning) {
-        const dx = clientX - panStart.x;
-        const dy = clientY - panStart.y;
-        const nextTranslateX = panStartTranslate.x + dx;
-        const nextTranslateY = panStartTranslate.y + dy;
-        if (enableLargeNodePanOptimization) {
-          panPreviewRef.current = { x: nextTranslateX, y: nextTranslateY };
-          applyTransform(nextTranslateX, nextTranslateY, viewRef.current.scale);
-        } else {
-          setTranslateX(nextTranslateX);
-          setTranslateY(nextTranslateY);
-        }
-      }
-
-      if (!isDraggingNode || !draggedNodeId) {
-        return;
-      }
-
-      const rect = svgRef.current?.getBoundingClientRect();
-      if (!rect) return;
-
-      setDragMousePos((prev) =>
-        prev.x === clientX && prev.y === clientY
-          ? prev
-          : { x: clientX, y: clientY }
-      );
-
-      const activeTranslateX =
-        panPreviewRef.current?.x ?? viewRef.current.translateX;
-      const activeTranslateY =
-        panPreviewRef.current?.y ?? viewRef.current.translateY;
-      const activeScale = viewRef.current.scale;
-
-      const worldX = (clientX - rect.left - activeTranslateX) / activeScale;
-      const worldY = (clientY - rect.top - activeTranslateY) / activeScale;
-
-      const hitCol = Math.floor(worldX / HIT_TEST_CELL_SIZE);
-      const hitRow = Math.floor(worldY / HIT_TEST_CELL_SIZE);
-      const bucketKey = getHitBucketKey(hitCol, hitRow);
-      const candidates = hitTestBuckets.get(bucketKey) || [];
-
-      let targetId: string | null = null;
-      for (const bounds of candidates) {
-        if (bounds.id === draggedNodeId) continue;
-        if (
-          worldX >= bounds.left &&
-          worldX <= bounds.right &&
-          worldY >= bounds.top &&
-          worldY <= bounds.bottom
-        ) {
-          targetId = bounds.id;
-        }
-      }
-
-      if (!targetId) {
-        targetId = resolveDropTargetInBlankArea({
-          worldX,
-          worldY,
-          hitCol,
-          hitRow,
-          hitTestBuckets,
-          positions,
-          visibleChildrenMap,
-          parentIdMap,
-          draggedNodeId,
-          subtreeBottomMap,
-          subtreeBoundsMap,
-        });
-      }
-
-      setDropTargetId((prev) => (prev === targetId ? prev : targetId));
-
-      if (!targetId) {
-        setDropInsertIndex((prev) => (prev === null ? prev : null));
-        setPreviewPosition((prev) => (prev === null ? prev : null));
-        return;
-      }
-
-      const targetPos = positions.get(targetId);
-      const draggedPos = positions.get(draggedNodeId);
-      const draggedData = nodeMap.get(draggedNodeId);
-      const targetNode = nodeMap.get(targetId);
-
-      if (!targetPos || !draggedPos || !draggedData || !targetNode) {
-        setDropInsertIndex((prev) => (prev === null ? prev : null));
-        setPreviewPosition((prev) => (prev === null ? prev : null));
-        return;
-      }
-
-      const visibleChildren = visibleChildrenMap.get(targetId) || [];
-      const insertIndex =
-        visibleChildren.length === 0
-          ? targetNode.children.length
-          : getInsertIndexByPointerY(
-              worldY,
-              visibleChildren,
-              positions,
-              targetPos
-            );
-      setDropInsertIndex((prev) => (prev === insertIndex ? prev : insertIndex));
-
-      const previewLevel = targetPos.level + 1;
-      let previewX: number;
-      let previewY: number;
-
-      if (visibleChildren.length > 0) {
-        const firstChildPos = positions.get(visibleChildren[0]);
-        previewX = firstChildPos
-          ? firstChildPos.x
-          : targetPos.x + targetPos.width / 2 + 100;
-        previewY = getPreviewYByInsertIndex(
-          insertIndex,
-          visibleChildren,
-          positions,
-          subtreeBottomMap,
-          subtreeBoundsMap,
-          targetPos.y
-        );
-      } else {
-        previewX =
-          targetPos.x + targetPos.width / 2 + 100 + draggedPos.width / 2;
-        previewY = targetPos.y;
-      }
-
-      const nextPreview: PreviewPosition = {
-        x: previewX,
-        y: previewY,
-        width: draggedPos.width,
-        height: draggedPos.height,
-        text: draggedData.text,
-        level: previewLevel,
-      };
-
-      setPreviewPosition((prev) =>
-        isSamePreviewPosition(prev, nextPreview) ? prev : nextPreview
-      );
-    },
-    [
-      isPanning,
-      panStart,
-      panStartTranslate,
-      enableLargeNodePanOptimization,
-      isDraggingNode,
-      draggedNodeId,
-      applyTransform,
-      hitTestBuckets,
-      positions,
-      nodeMap,
-      parentIdMap,
-      subtreeBottomMap,
-      subtreeBoundsMap,
-      visibleChildrenMap,
-    ]
-  );
-
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      pendingPointerRef.current = { x: e.clientX, y: e.clientY };
-      if (pointerFrameRef.current !== null) {
-        return;
-      }
-
-      pointerFrameRef.current = window.requestAnimationFrame(() => {
-        pointerFrameRef.current = null;
-        const point = pendingPointerRef.current;
-        if (!point) {
-          return;
-        }
-        processPointerMove(point.x, point.y);
-      });
-    },
-    [processPointerMove]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    if (isPanning) {
-      if (enableLargeNodePanOptimization) {
-        const panPreview = panPreviewRef.current;
-        if (panPreview) {
-          setTranslateX(panPreview.x);
-          setTranslateY(panPreview.y);
-        }
-        panPreviewRef.current = null;
-      }
-      setIsPanning(false);
-    }
-
-    if (isDraggingNode && draggedNodeId && dropTargetId) {
-      moveNode(
-        draggedNodeId,
-        dropTargetId,
-        dropInsertIndex === null ? undefined : dropInsertIndex
-      );
-    }
-
-    setIsDraggingNode(false);
-    setDraggedNodeId(null);
-    setDropTargetId(null);
-    setDropInsertIndex(null);
-    setPreviewPosition(null);
-    setDragMousePos({ x: 0, y: 0 });
-    setDragOffset({ x: 0, y: 0 });
-    pendingPointerRef.current = null;
-    if (pointerFrameRef.current !== null) {
-      window.cancelAnimationFrame(pointerFrameRef.current);
-      pointerFrameRef.current = null;
-    }
-  }, [
-    isPanning,
-    enableLargeNodePanOptimization,
-    isDraggingNode,
-    draggedNodeId,
-    dropTargetId,
-    dropInsertIndex,
-    moveNode,
-  ]);
-
-  useEffect(() => {
-    if (!isPanning && !isDraggingNode) {
-      return;
-    }
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isPanning, isDraggingNode, handleMouseMove, handleMouseUp]);
-
-  useEffect(() => {
-    return () => {
-      if (pointerFrameRef.current !== null) {
-        window.cancelAnimationFrame(pointerFrameRef.current);
-      }
-    };
-  }, []);
-
-  const handleStartDrag = useCallback(
-    (nodeId: string, startX: number, startY: number) => {
-      const pos = positions.get(nodeId);
-      if (!pos || !svgRef.current) return;
-
-      const rect = svgRef.current.getBoundingClientRect();
-      const nodeScreenCenterX = pos.x * scale + translateX + rect.left;
-      const nodeScreenCenterY = pos.y * scale + translateY + rect.top;
-      const scaledWidth = pos.width * scale;
-      const scaledHeight = pos.height * scale;
-      const nodeScreenTopLeftX = nodeScreenCenterX - scaledWidth / 2;
-      const nodeScreenTopLeftY = nodeScreenCenterY - scaledHeight / 2;
-
-      setIsDraggingNode(true);
-      setDraggedNodeId(nodeId);
-      setDropInsertIndex(null);
-      setDragMousePos({ x: startX, y: startY });
-      setDragOffset({
-        x: startX - nodeScreenTopLeftX,
-        y: startY - nodeScreenTopLeftY,
-      });
-    },
-    [positions, scale, translateX, translateY]
   );
 
   const handleStartEdit = useCallback((nodeId: string) => {
