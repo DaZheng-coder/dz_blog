@@ -34,50 +34,64 @@ function getInsertIndexByPointerY(
   pointerY: number,
   visibleChildren: string[],
   positions: Map<string, { y: number; height: number }>,
-  subtreeBoundsMap: Map<string, SubtreeBounds>,
   targetPos?: { y: number; height: number }
 ): number {
   if (visibleChildren.length === 0) {
     return 0;
   }
 
-  // 鼠标在目标节点本体或其下方少量缓冲区时，优先插到最前（更符合直觉）
+  const anchors = visibleChildren
+    .map((id) => {
+      const pos = positions.get(id);
+      if (!pos) return null;
+      return {
+        top: pos.y - pos.height / 2,
+        bottom: pos.y + pos.height / 2,
+        center: pos.y,
+      };
+    })
+    .filter((item): item is { top: number; bottom: number; center: number } =>
+      Boolean(item)
+    );
+
+  if (anchors.length === 0) {
+    return 0;
+  }
+
+  if (anchors.length === 1) {
+    return pointerY < anchors[0].center ? 0 : 1;
+  }
+
+  // 仅当鼠标明显位于“父节点顶部”和“第一子节点顶部”之上时，才判为最前插入。
+  // 避免第1和第2子节点间距很小时，被错误吸附到 index 0。
   if (targetPos) {
-    const targetBottom = targetPos.y + targetPos.height / 2;
-    if (pointerY <= targetBottom + 24) {
+    const parentTop = targetPos.y - targetPos.height / 2;
+    const firstChildTop = anchors[0].top;
+    const frontBoundary = Math.min(parentTop - 4, firstChildTop - 8);
+    if (pointerY <= frontBoundary) {
       return 0;
     }
   }
 
-  if (visibleChildren.length === 1) {
-    const onlyId = visibleChildren[0];
-    const onlyPos = positions.get(onlyId);
-    if (!onlyPos) return 1;
-    return pointerY < onlyPos.y ? 0 : 1;
-  }
-
-  const firstBounds = subtreeBoundsMap.get(visibleChildren[0]);
-  if (firstBounds && pointerY < firstBounds.minY) {
+  if (pointerY <= anchors[0].top) {
     return 0;
   }
 
-  for (let i = 0; i < visibleChildren.length - 1; i++) {
-    const currentId = visibleChildren[i];
-    const nextId = visibleChildren[i + 1];
-    const currentBounds = subtreeBoundsMap.get(currentId);
-    const nextBounds = subtreeBoundsMap.get(nextId);
+  const last = anchors[anchors.length - 1];
+  if (pointerY >= last.bottom) {
+    return anchors.length;
+  }
 
-    if (!currentBounds || !nextBounds) {
-      continue;
-    }
-
-    const boundaryY = (currentBounds.maxY + nextBounds.minY) / 2;
-    if (pointerY < boundaryY) {
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const current = anchors[i];
+    const next = anchors[i + 1];
+    const boundaryY = (current.center + next.center) / 2;
+    if (pointerY <= boundaryY) {
       return i + 1;
     }
   }
 
-  return visibleChildren.length;
+  return anchors.length;
 }
 
 function getPreviewYByInsertIndex(
@@ -542,7 +556,6 @@ export function MindMap({
               worldY,
               visibleChildren,
               positions,
-              subtreeBoundsMap,
               targetPos
             );
       setDropInsertIndex((prev) => (prev === insertIndex ? prev : insertIndex));
