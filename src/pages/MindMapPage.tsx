@@ -1,5 +1,5 @@
-import { MindMap } from "../components/MindMap";
-import { useMemo, useState } from "react";
+import { MindMap } from "../components/mindMap/MindMap";
+import { useEffect, useMemo, useState } from "react";
 import type { MindMapNode } from "../types/mindmap";
 
 /**
@@ -210,7 +210,8 @@ function generateDeepMindMapData(totalNodes: number): MindMapNode {
     createdCount += 1;
     const child: MindMapNode = {
       id: `deep-node-${createdCount}`,
-      text: depth >= 18 ? `深层分支 ${createdCount}` : `横向分支 ${createdCount}`,
+      text:
+        depth >= 18 ? `深层分支 ${createdCount}` : `横向分支 ${createdCount}`,
       children: [],
     };
     parent.children.push(child);
@@ -220,20 +221,136 @@ function generateDeepMindMapData(totalNodes: number): MindMapNode {
   return root;
 }
 
+function generateBalancedHugeMindMapData(totalNodes: number): MindMapNode {
+  const root: MindMapNode = {
+    id: "huge-root",
+    text: `超大规模均匀场景（${totalNodes}节点）`,
+    children: [],
+  };
+
+  if (totalNodes <= 1) {
+    return root;
+  }
+
+  // 按层权重分配节点，保证既有深度又有宽度，整体分布更均匀
+  const levelWeights = [
+    6, 18, 54, 120, 240, 420, 640, 900, 1200, 1450, 1600, 1450, 1100, 700, 101,
+  ];
+  const totalWeight = levelWeights.reduce((sum, weight) => sum + weight, 0);
+  const remainingNodes = totalNodes - 1;
+
+  const levelCounts = levelWeights.map((weight) =>
+    Math.max(1, Math.floor((weight / totalWeight) * remainingNodes))
+  );
+
+  let allocated = levelCounts.reduce((sum, count) => sum + count, 0);
+  let delta = remainingNodes - allocated;
+
+  // 中间层优先修正，尽量保持“橄榄形”宽度分布
+  const rebalanceOrder = [10, 9, 11, 8, 12, 7, 13, 6, 14, 5, 4, 3, 2, 1, 0];
+
+  while (delta > 0) {
+    for (const index of rebalanceOrder) {
+      if (delta <= 0) break;
+      levelCounts[index] += 1;
+      delta -= 1;
+    }
+  }
+
+  while (delta < 0) {
+    for (const index of rebalanceOrder) {
+      if (delta >= 0) break;
+      if (levelCounts[index] > 1) {
+        levelCounts[index] -= 1;
+        delta += 1;
+      }
+    }
+  }
+
+  const levels: MindMapNode[][] = [[root]];
+  let createdCount = 1;
+
+  for (let levelIndex = 0; levelIndex < levelCounts.length; levelIndex++) {
+    const parentLevel = levels[levelIndex];
+    const nextLevelCount = levelCounts[levelIndex];
+    const nextLevel: MindMapNode[] = [];
+
+    for (let i = 0; i < nextLevelCount; i++) {
+      createdCount += 1;
+      const node: MindMapNode = {
+        id: `huge-node-${createdCount}`,
+        text: `层${levelIndex + 1}-节点${i + 1}`,
+        children: [],
+      };
+
+      const parent = parentLevel[i % parentLevel.length];
+      parent.children.push(node);
+      nextLevel.push(node);
+    }
+
+    levels.push(nextLevel);
+  }
+
+  return root;
+}
+
 /**
  * 思维导图演示页面
  */
 export function MindMapPage() {
-  const [scene, setScene] = useState<"demo" | "large-500" | "deep-1000">("demo");
+  const [viewport, setViewport] = useState(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }));
+  const [scene, setScene] = useState<
+    "demo" | "large-500" | "deep-1000" | "huge-10000"
+  >("demo");
   const largeData500 = useMemo(() => generateLargeMindMapData(500), []);
   const deepData1000 = useMemo(() => generateDeepMindMapData(1000), []);
+  const hugeData10000 = useMemo(
+    () => generateBalancedHugeMindMapData(10000),
+    []
+  );
 
   const currentData =
     scene === "demo"
       ? demoData
       : scene === "large-500"
       ? largeData500
-      : deepData1000;
+      : scene === "deep-1000"
+      ? deepData1000
+      : hugeData10000;
+
+  useEffect(() => {
+    let frameId: number | null = null;
+
+    const updateViewport = () => {
+      frameId = null;
+      setViewport((prev) => {
+        const nextWidth = window.innerWidth;
+        const nextHeight = window.innerHeight;
+        if (prev.width === nextWidth && prev.height === nextHeight) {
+          return prev;
+        }
+        return { width: nextWidth, height: nextHeight };
+      });
+    };
+
+    const handleResize = () => {
+      if (frameId !== null) {
+        return;
+      }
+      frameId = window.requestAnimationFrame(updateViewport);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, []);
 
   return (
     <div className="relative w-screen h-screen">
@@ -271,13 +388,24 @@ export function MindMapPage() {
         >
           1000 节点（深层级）
         </button>
+        <button
+          type="button"
+          onClick={() => setScene("huge-10000")}
+          className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+            scene === "huge-10000"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          10000 节点（均匀深宽）
+        </button>
       </div>
 
       <MindMap
         key={scene}
         initialData={currentData}
-        width={window.innerWidth}
-        height={window.innerHeight}
+        width={viewport.width}
+        height={viewport.height}
       />
     </div>
   );

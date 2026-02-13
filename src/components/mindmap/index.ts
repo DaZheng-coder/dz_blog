@@ -9,7 +9,4 @@ export { MindMapZoomIndicator } from "./MindMapZoomIndicator";
 export { MindMapDragGhost } from "./MindMapDragGhost";
 export { MindMapNodeLayer } from "./MindMapNodeLayer";
 export { MindMapDropPreview } from "./MindMapDropPreview";
-export {
-  getLevelNodeStyle,
-  FLOATING_CARD_CLASS,
-} from "./styles";
+export { getLevelNodeStyle, FLOATING_CARD_CLASS } from "./styles";

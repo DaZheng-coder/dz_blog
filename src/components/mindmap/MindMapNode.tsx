@@ -168,8 +168,11 @@ export const MindMapNode = memo(function MindMapNode({
     onStartDrag(node.id, e.clientX, e.clientY);
   };
 
-  const { bgColor, textColor, borderColor: defaultBorderColor } =
-    getLevelNodeStyle(level);
+  const {
+    bgColor,
+    textColor,
+    borderColor: defaultBorderColor,
+  } = getLevelNodeStyle(level);
   const borderColor = isSelected
     ? "border-2 border-orange-400"
     : `border-2 ${defaultBorderColor}`;
@@ -219,9 +222,7 @@ export const MindMapNode = memo(function MindMapNode({
           ) : (
             /* 显示模式 */
             <div className="flex items-center justify-center w-full">
-              <span
-                className="text-sm font-medium break-words text-center leading-[22px] [hyphens:auto]"
-              >
+              <span className="text-sm font-medium break-words text-center leading-[22px] [hyphens:auto]">
                 {node.text}
               </span>
             </div>

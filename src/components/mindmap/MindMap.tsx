@@ -1,9 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import type {
-  MindMapNode as MindMapNodeType,
-  NodePosition,
-} from "../../types/mindmap";
-import { useMindMapState } from "../../hooks/useMindMapState";
+import type { MindMapNode as MindMapNodeType } from "../../types/mindmap";
+import { useMindMapState } from "./hooks/useMindMapState";
 import { useLayout, getLayoutBounds } from "../../hooks/useLayout";
 import { MindMapGuidePanel } from "./MindMapGuidePanel";
 import { MindMapZoomIndicator } from "./MindMapZoomIndicator";
@@ -12,142 +9,25 @@ import { MindMapNodeLayer } from "./MindMapNodeLayer";
 import { MindMapDropPreview } from "./MindMapDropPreview";
 import { isSamePreviewPosition, type PreviewPosition } from "./types";
 import { MindMapConnections } from "./MindMapConnections";
+import { MindMapHistoryControls } from "./MindMapHistoryControls";
+import {
+  HIT_TEST_CELL_SIZE,
+  buildHitBuckets,
+  buildNodeMap,
+  buildVisibleChildrenMap,
+  collectSubtreeBottom,
+  collectSubtreeBounds,
+  collectVisibleNodeBounds,
+  getHitBucketKey,
+  getWorldViewport,
+  type SubtreeBounds,
+} from "./geometry";
+import { useMindMapShortcuts } from "./hooks/useMindMapShortcuts";
 
 interface MindMapProps {
   initialData: MindMapNodeType;
   width?: number;
   height?: number;
-}
-
-interface NodeBounds {
-  id: string;
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-}
-
-interface SubtreeBounds {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-}
-
-const HIT_TEST_CELL_SIZE = 240;
-
-function getHitBucketKey(col: number, row: number): string {
-  return `${col}:${row}`;
-}
-
-function collectVisibleNodeBounds(
-  positions: Map<string, NodePosition>
-): NodeBounds[] {
-  const bounds: NodeBounds[] = [];
-  positions.forEach((pos, id) => {
-    if (!pos.visible) return;
-    bounds.push({
-      id,
-      left: pos.x - pos.width / 2,
-      right: pos.x + pos.width / 2,
-      top: pos.y - pos.height / 2,
-      bottom: pos.y + pos.height / 2,
-    });
-  });
-  return bounds;
-}
-
-function buildHitBuckets(
-  bounds: NodeBounds[],
-  cellSize: number
-): Map<string, NodeBounds[]> {
-  const buckets = new Map<string, NodeBounds[]>();
-
-  for (const item of bounds) {
-    const minCol = Math.floor(item.left / cellSize);
-    const maxCol = Math.floor(item.right / cellSize);
-    const minRow = Math.floor(item.top / cellSize);
-    const maxRow = Math.floor(item.bottom / cellSize);
-
-    for (let col = minCol; col <= maxCol; col++) {
-      for (let row = minRow; row <= maxRow; row++) {
-        const key = getHitBucketKey(col, row);
-        const bucket = buckets.get(key);
-        if (bucket) {
-          bucket.push(item);
-        } else {
-          buckets.set(key, [item]);
-        }
-      }
-    }
-  }
-
-  return buckets;
-}
-
-function collectSubtreeBottom(
-  rootNode: MindMapNodeType,
-  positions: Map<string, NodePosition>
-): Map<string, number> {
-  const map = new Map<string, number>();
-
-  const walk = (node: MindMapNodeType): number => {
-    const pos = positions.get(node.id);
-    if (!pos || !pos.visible) {
-      return -Infinity;
-    }
-
-    let maxBottom = pos.y + pos.height / 2;
-    if (!node.collapsed && node.children.length > 0) {
-      for (const child of node.children) {
-        maxBottom = Math.max(maxBottom, walk(child));
-      }
-    }
-
-    map.set(node.id, maxBottom);
-    return maxBottom;
-  };
-
-  walk(rootNode);
-  return map;
-}
-
-function collectSubtreeBounds(
-  rootNode: MindMapNodeType,
-  positions: Map<string, NodePosition>
-): Map<string, SubtreeBounds> {
-  const map = new Map<string, SubtreeBounds>();
-
-  const walk = (node: MindMapNodeType): SubtreeBounds | null => {
-    const pos = positions.get(node.id);
-    if (!pos || !pos.visible) {
-      return null;
-    }
-
-    const current: SubtreeBounds = {
-      minX: pos.x - pos.width / 2,
-      maxX: pos.x + pos.width / 2,
-      minY: pos.y - pos.height / 2,
-      maxY: pos.y + pos.height / 2,
-    };
-
-    if (!node.collapsed && node.children.length > 0) {
-      for (const child of node.children) {
-        const childBounds = walk(child);
-        if (!childBounds) continue;
-        current.minX = Math.min(current.minX, childBounds.minX);
-        current.maxX = Math.max(current.maxX, childBounds.maxX);
-        current.minY = Math.min(current.minY, childBounds.minY);
-        current.maxY = Math.max(current.maxY, childBounds.maxY);
-      }
-    }
-
-    map.set(node.id, current);
-    return current;
-  };
-
-  walk(rootNode);
-  return map;
 }
 
 /**
@@ -170,29 +50,15 @@ export function MindMap({
     deleteNode,
     toggleCollapse,
     moveNode,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useMindMapState(initialData);
 
   const positions = useLayout(rootNode);
 
-  const nodeMap = useMemo(() => {
-    const map = new Map<string, MindMapNodeType>();
-    if (!rootNode) {
-      return map;
-    }
-
-    const stack: MindMapNodeType[] = [rootNode];
-    while (stack.length > 0) {
-      const current = stack.pop();
-      if (!current) break;
-      map.set(current.id, current);
-
-      for (let i = current.children.length - 1; i >= 0; i--) {
-        stack.push(current.children[i]);
-      }
-    }
-
-    return map;
-  }, [rootNode]);
+  const nodeMap = useMemo(() => buildNodeMap(rootNode), [rootNode]);
 
   const visibleNodeBounds = useMemo(
     () => collectVisibleNodeBounds(positions),
@@ -215,18 +81,10 @@ export function MindMap({
     }
     return collectSubtreeBounds(rootNode, positions);
   }, [rootNode, positions]);
-  const visibleChildrenMap = useMemo(() => {
-    const map = new Map<string, string[]>();
-    nodeMap.forEach((node, id) => {
-      map.set(
-        id,
-        node.children
-          .filter((child) => positions.get(child.id)?.visible)
-          .map((child) => child.id)
-      );
-    });
-    return map;
-  }, [nodeMap, positions]);
+  const visibleChildrenMap = useMemo(
+    () => buildVisibleChildrenMap(nodeMap, positions),
+    [nodeMap, positions]
+  );
 
   const [scale, setScale] = useState(1);
   const [translateX, setTranslateX] = useState(width / 2);
@@ -248,17 +106,19 @@ export function MindMap({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const pendingPointerRef = useRef<{ x: number; y: number } | null>(null);
   const pointerFrameRef = useRef<number | null>(null);
-  const viewRef = useRef({ scale: 1, translateX: width / 2, translateY: height / 2 });
+  const viewRef = useRef({
+    scale: 1,
+    translateX: width / 2,
+    translateY: height / 2,
+  });
+  const viewportSizeRef = useRef({ width, height });
   const panPreviewRef = useRef<{ x: number; y: number } | null>(null);
   const enableLargeNodePanOptimization = nodeMap.size > 500;
   const isInteracting = isPanning || isDraggingNode;
-  const worldViewport = useMemo(() => {
-    const minX = (0 - translateX) / scale;
-    const maxX = (width - translateX) / scale;
-    const minY = (0 - translateY) / scale;
-    const maxY = (height - translateY) / scale;
-    return { minX, maxX, minY, maxY };
-  }, [translateX, translateY, scale, width, height]);
+  const worldViewport = useMemo(
+    () => getWorldViewport(translateX, translateY, scale, width, height),
+    [translateX, translateY, scale, width, height]
+  );
 
   const applyTransform = useCallback(
     (nextTranslateX: number, nextTranslateY: number, nextScale: number) => {
@@ -296,50 +156,41 @@ export function MindMap({
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (editingNodeId || !selectedNodeId) return;
+    const prev = viewportSizeRef.current;
+    if (prev.width === width && prev.height === height) {
+      return;
+    }
 
-      const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
-        return;
-      }
+    const deltaX = (width - prev.width) / 2;
+    const deltaY = (height - prev.height) / 2;
 
-      switch (e.key) {
-        case "Enter":
-          e.preventDefault();
-          if (selectedNodeId !== rootNode?.id) {
-            addSibling(selectedNodeId);
-          }
-          break;
+    viewportSizeRef.current = { width, height };
 
-        case "Tab":
-          e.preventDefault();
-          addChild(selectedNodeId);
-          break;
+    if (deltaX === 0 && deltaY === 0) {
+      return;
+    }
 
-        case "Delete":
-        case "Backspace":
-          e.preventDefault();
-          if (selectedNodeId !== rootNode?.id) {
-            if (confirm("确定要删除选中的节点吗？")) {
-              deleteNode(selectedNodeId);
-              setSelectedNodeId(null);
-            }
-          }
-          break;
-      }
-    };
+    setTranslateX((current) => current + deltaX);
+    setTranslateY((current) => current + deltaY);
+  }, [width, height]);
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
+  useEffect(() => {
+    if (selectedNodeId && !nodeMap.has(selectedNodeId)) {
+      setSelectedNodeId(null);
+    }
+  }, [selectedNodeId, nodeMap]);
+
+  useMindMapShortcuts({
     selectedNodeId,
     editingNodeId,
-    rootNode,
+    rootNodeId: rootNode?.id,
     addChild,
     addSibling,
     deleteNode,
-  ]);
+    onClearSelection: () => setSelectedNodeId(null),
+    undo,
+    redo,
+  });
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -407,7 +258,9 @@ export function MindMap({
       if (!rect) return;
 
       setDragMousePos((prev) =>
-        prev.x === clientX && prev.y === clientY ? prev : { x: clientX, y: clientY }
+        prev.x === clientX && prev.y === clientY
+          ? prev
+          : { x: clientX, y: clientY }
       );
 
       const activeTranslateX =
@@ -638,6 +491,12 @@ export function MindMap({
     <div className="relative w-full h-full bg-gray-50 overflow-hidden">
       <MindMapGuidePanel />
       <MindMapZoomIndicator scale={scale} />
+      {/* <MindMapHistoryControls
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+      /> */}
 
       <MindMapDragGhost
         isDraggingNode={isDraggingNode}
