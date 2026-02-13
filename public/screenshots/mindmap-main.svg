@@ -1,0 +1,14 @@
+<svg width="1200" height="700" viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="700" fill="#f5f2e9"/>
+  <rect x="70" y="70" width="1060" height="560" rx="24" fill="#202523"/>
+  <circle cx="600" cy="350" r="90" fill="#65ff7f"/>
+  <circle cx="350" cy="220" r="56" fill="#343a37"/>
+  <circle cx="330" cy="480" r="56" fill="#343a37"/>
+  <circle cx="860" cy="220" r="56" fill="#343a37"/>
+  <circle cx="880" cy="480" r="56" fill="#343a37"/>
+  <line x1="600" y1="350" x2="350" y2="220" stroke="#65ff7f" stroke-width="8"/>
+  <line x1="600" y1="350" x2="330" y2="480" stroke="#65ff7f" stroke-width="8"/>
+  <line x1="600" y1="350" x2="860" y2="220" stroke="#65ff7f" stroke-width="8"/>
+  <line x1="600" y1="350" x2="880" y2="480" stroke="#65ff7f" stroke-width="8"/>
+  <text x="100" y="100" font-size="28" fill="#1f2321" font-family="monospace">MindMap Main</text>
+</svg>

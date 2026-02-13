@@ -1,0 +1,11 @@
+<svg width="1200" height="700" viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="700" fill="#f5f2e9"/>
+  <rect x="60" y="60" width="1080" height="580" rx="24" fill="#1f2321"/>
+  <rect x="100" y="120" width="260" height="460" rx="16" fill="#2b302d"/>
+  <rect x="390" y="120" width="710" height="120" rx="16" fill="#313734"/>
+  <rect x="390" y="260" width="460" height="60" rx="12" fill="#65ff7f"/>
+  <rect x="390" y="340" width="620" height="48" rx="12" fill="#3f4642"/>
+  <rect x="390" y="408" width="560" height="48" rx="12" fill="#3f4642"/>
+  <rect x="390" y="476" width="680" height="48" rx="12" fill="#3f4642"/>
+  <text x="390" y="95" font-size="28" fill="#1f2321" font-family="monospace">AI Chat Overview</text>
+</svg>

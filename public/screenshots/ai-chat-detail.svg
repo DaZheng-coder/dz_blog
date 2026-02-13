@@ -1,0 +1,10 @@
+<svg width="1200" height="700" viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="700" fill="#f5f2e9"/>
+  <rect x="70" y="70" width="1060" height="560" rx="24" fill="#232826"/>
+  <rect x="110" y="120" width="980" height="80" rx="14" fill="#313734"/>
+  <rect x="110" y="230" width="720" height="120" rx="14" fill="#65ff7f"/>
+  <rect x="110" y="370" width="980" height="70" rx="14" fill="#3a403d"/>
+  <rect x="110" y="460" width="820" height="70" rx="14" fill="#3a403d"/>
+  <rect x="950" y="460" width="140" height="70" rx="14" fill="#65ff7f"/>
+  <text x="110" y="100" font-size="28" fill="#1f2321" font-family="monospace">AI Chat Detail</text>
+</svg>

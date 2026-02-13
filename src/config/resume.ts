@@ -85,7 +85,7 @@ export interface IResumeConfig {
 export const resumeConfig: IResumeConfig = {
   basicInfo: {
     name: "张三", // 请修改为您的真实姓名
-    title: "高级前端开发工程师",
+    title: "前端开发工程师",
     location: "北京市",
     email: "your.email@example.com",
     phone: "138-xxxx-xxxx",
@@ -94,7 +94,7 @@ export const resumeConfig: IResumeConfig = {
   },
 
   summary: `
-我是一名拥有 5 年经验的高级前端开发工程师，专注于构建高性能、可维护的 Web 应用。
+我是一名拥有 5 年经验的前端开发工程师，专注于构建高性能、可维护的 Web 应用。
 精通 React、Vue、TypeScript 等现代前端技术栈，有丰富的大型项目架构和团队协作经验。
 擅长性能优化、工程化建设和用户体验提升，热爱技术分享和开源贡献。
   `.trim(),
@@ -131,7 +131,7 @@ export const resumeConfig: IResumeConfig = {
   experience: [
     {
       company: "某互联网科技公司",
-      position: "高级前端开发工程师",
+      position: "前端开发工程师",
       period: "2022.03 - 至今",
       location: "北京",
       responsibilities: [
@@ -184,10 +184,7 @@ export const resumeConfig: IResumeConfig = {
         "负责页面布局、交互实现和接口对接",
         "修复线上 bug 和优化用户体验",
       ],
-      achievements: [
-        "完成 20+ 项目的前端开发工作",
-        "获得客户多次好评和续单",
-      ],
+      achievements: ["完成 20+ 项目的前端开发工作", "获得客户多次好评和续单"],
       techStack: ["Vue 2", "jQuery", "Bootstrap", "Webpack"],
     },
   ],
@@ -218,7 +215,8 @@ export const resumeConfig: IResumeConfig = {
     },
     {
       name: "电商小程序",
-      description: "基于微信小程序的电商平台，支持商品浏览、购物车、订单管理等功能",
+      description:
+        "基于微信小程序的电商平台，支持商品浏览、购物车、订单管理等功能",
       role: "前端开发工程师",
       period: "2021.03 - 2021.09",
       techStack: ["uni-app", "Vue 3", "TypeScript", "Pinia"],
@@ -231,8 +229,7 @@ export const resumeConfig: IResumeConfig = {
     },
     {
       name: "AI 智能简历对话系统（本项目）",
-      description:
-        "使用 AI 技术打造的互动简历系统，让面试官通过对话了解求职者",
+      description: "使用 AI 技术打造的互动简历系统，让面试官通过对话了解求职者",
       role: "个人项目",
       period: "2024.02",
       techStack: [
@@ -312,7 +309,9 @@ export function generateSystemPrompt(config: IResumeConfig): string {
     config;
 
   return `
-你现在要扮演一位名叫"${basicInfo.name}"的${basicInfo.title}，正在接受面试官的提问。
+你现在要扮演一位名叫"${basicInfo.name}"的${
+    basicInfo.title
+  }，正在接受面试官的提问。
 
 # 基本信息
 - 姓名：${basicInfo.name}
@@ -344,7 +343,11 @@ ${exp.location ? `地点：${exp.location}` : ""}
 工作职责：
 ${exp.responsibilities.map((r) => `- ${r}`).join("\n")}
 
-${exp.achievements ? `工作成果：\n${exp.achievements.map((a) => `- ${a}`).join("\n")}` : ""}
+${
+  exp.achievements
+    ? `工作成果：\n${exp.achievements.map((a) => `- ${a}`).join("\n")}`
+    : ""
+}
 
 技术栈：${exp.techStack?.join("、")}
 `

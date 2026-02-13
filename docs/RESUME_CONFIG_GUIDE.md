@@ -23,7 +23,7 @@
 ```typescript
 basicInfo: {
   name: "您的姓名",        // 修改为您的真实姓名
-  title: "高级前端开发工程师",  // 您的职位
+  title: "前端开发工程师",  // 您的职位
   location: "北京市",       // 所在城市
   email: "your.email@example.com",
   phone: "138-xxxx-xxxx",
@@ -36,11 +36,12 @@ basicInfo: {
 
 ```typescript
 summary: `
-我是一名拥有 5 年经验的高级前端开发工程师...
+我是一名拥有 5 年经验的前端开发工程师...
   `.trim(),
 ```
 
 **建议**:
+
 - 字数控制在 100-200 字
 - 突出核心优势和经验年限
 - 体现技术专长和职业追求
@@ -70,6 +71,7 @@ skills: {
 ```
 
 **建议**:
+
 - 只列出真正熟练的技术
 - 可以注明技术版本号
 - 按熟练程度排序
@@ -80,7 +82,7 @@ skills: {
 experience: [
   {
     company: "某互联网科技公司",
-    position: "高级前端开发工程师",
+    position: "前端开发工程师",
     period: "2022.03 - 至今",
     location: "北京",
     responsibilities: [
@@ -99,6 +101,7 @@ experience: [
 ```
 
 **建议**:
+
 - 按时间倒序排列（最新的在前）
 - 职责用动词开头（负责、主导、实现）
 - 成果量化（用数据说话）
@@ -124,6 +127,7 @@ projects: [
 ```
 
 **建议**:
+
 - 选择 3-5 个最有代表性的项目
 - 突出您的角色和贡献
 - 用数据体现项目价值
@@ -276,6 +280,7 @@ export function generateSystemPrompt(config: IResumeConfig): string {
 ### Q1: AI 回答不够详细？
 
 **解决方案**:
+
 - 在配置文件中添加更多细节
 - 在 `achievements` 中补充量化数据
 - 在 `highlights` 中增加项目亮点
@@ -283,6 +288,7 @@ export function generateSystemPrompt(config: IResumeConfig): string {
 ### Q2: AI 回答偏离事实？
 
 **解决方案**:
+
 - 检查 `systemPrompt` 中的指导规则
 - 确保 `responseStyle` 强调基于简历回答
 - 在配置中明确不要编造经历

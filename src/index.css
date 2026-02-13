@@ -1,21 +1,30 @@
 @import "tailwindcss";
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --bg-base: #f5f2e9;
+  --text-base: #1f2321;
+  --text-muted: #4e5350;
+  --accent-neon: #65ff7f;
+
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  margin: 0;
+  background: radial-gradient(circle at top right, #f0f7e8 0%, var(--bg-base) 45%);
+  color: var(--text-base);
+}
+
 @theme {
   --animate-spin-slow: spin 3s linear infinite;
 }
 
-/* 自定义动画 */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -31,7 +40,6 @@
   animation: fade-in 0.3s ease-out;
 }
 
-/* 文本截断 */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
