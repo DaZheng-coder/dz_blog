@@ -1,6 +1,20 @@
 import type { SubtreeBounds } from "./geometry";
 import { getHitBucketKey } from "./geometry";
 
+const FRONT_PARENT_MARGIN = 4;
+const FRONT_CHILD_MARGIN = 8;
+const INSERT_PREVIEW_OFFSET_Y = 40;
+const HIT_BUCKET_SEARCH_RADIUS = 2;
+const BLANK_DROP_CHILD_MARGIN_Y = 140;
+const BLANK_DROP_PARENT_LEFT_MARGIN = 60;
+const BLANK_DROP_PARENT_RIGHT_MARGIN = 180;
+const BLANK_DROP_LEAF_CENTER_OFFSET_X = 80;
+const BLANK_DROP_LEAF_LEFT_MARGIN = 40;
+const BLANK_DROP_LEAF_RIGHT_MARGIN = 120;
+const BLANK_DROP_LEAF_MIN_HEIGHT = 140;
+const SCORE_WEIGHT_Y_WITH_CHILDREN = 0.2;
+const SCORE_WEIGHT_Y_LEAF = 0.3;
+
 export function getInsertIndexByPointerY(
   pointerY: number,
   visibleChildren: string[],
@@ -38,7 +52,10 @@ export function getInsertIndexByPointerY(
   if (targetPos) {
     const parentTop = targetPos.y - targetPos.height / 2;
     const firstChildTop = anchors[0].top;
-    const frontBoundary = Math.min(parentTop - 4, firstChildTop - 8);
+    const frontBoundary = Math.min(
+      parentTop - FRONT_PARENT_MARGIN,
+      firstChildTop - FRONT_CHILD_MARGIN
+    );
     if (pointerY <= frontBoundary) {
       return 0;
     }
@@ -81,10 +98,10 @@ export function getPreviewYByInsertIndex(
     const firstId = visibleChildren[0];
     const firstBounds = subtreeBoundsMap.get(firstId);
     if (firstBounds) {
-      return firstBounds.minY - 40;
+      return firstBounds.minY - INSERT_PREVIEW_OFFSET_Y;
     }
     const firstPos = positions.get(firstId);
-    return firstPos ? firstPos.y - 40 : fallbackY;
+    return firstPos ? firstPos.y - INSERT_PREVIEW_OFFSET_Y : fallbackY;
   }
 
   if (insertIndex >= visibleChildren.length) {
@@ -93,7 +110,7 @@ export function getPreviewYByInsertIndex(
     if (lastPos) {
       const subtreeBottom =
         subtreeBottomMap.get(lastId) ?? lastPos.y + lastPos.height / 2;
-      return subtreeBottom + 40;
+      return subtreeBottom + INSERT_PREVIEW_OFFSET_Y;
     }
     return fallbackY;
   }
@@ -147,7 +164,7 @@ export function resolveDropTargetInBlankArea(params: {
   } = params;
 
   const candidateIds = new Set<string>();
-  const radius = 2;
+  const radius = HIT_BUCKET_SEARCH_RADIUS;
 
   for (let col = hitCol - radius; col <= hitCol + radius; col++) {
     for (let row = hitRow - radius; row <= hitRow + radius; row++) {
@@ -181,19 +198,22 @@ export function resolveDropTargetInBlankArea(params: {
 
       const firstBounds = subtreeBoundsMap.get(firstId);
       const minY =
-        (firstBounds?.minY ?? firstChildPos.y - firstChildPos.height / 2) - 140;
+        (firstBounds?.minY ?? firstChildPos.y - firstChildPos.height / 2) -
+        BLANK_DROP_CHILD_MARGIN_Y;
       const maxY =
         (subtreeBottomMap.get(lastId) ??
-          firstChildPos.y + firstChildPos.height / 2) + 140;
-      const minX = pos.x + pos.width / 2 - 60;
-      const maxX = firstChildPos.x + 180;
+          firstChildPos.y + firstChildPos.height / 2) +
+        BLANK_DROP_CHILD_MARGIN_Y;
+      const minX = pos.x + pos.width / 2 - BLANK_DROP_PARENT_LEFT_MARGIN;
+      const maxX = firstChildPos.x + BLANK_DROP_PARENT_RIGHT_MARGIN;
 
       if (worldX < minX || worldX > maxX || worldY < minY || worldY > maxY) {
         continue;
       }
 
       const score =
-        Math.abs(worldX - firstChildPos.x) + Math.abs(worldY - pos.y) * 0.2;
+        Math.abs(worldX - firstChildPos.x) +
+        Math.abs(worldY - pos.y) * SCORE_WEIGHT_Y_WITH_CHILDREN;
       if (score < bestScore) {
         bestScore = score;
         bestTargetId = candidateId;
@@ -201,17 +221,18 @@ export function resolveDropTargetInBlankArea(params: {
       continue;
     }
 
-    const centerX = pos.x + pos.width / 2 + 80;
-    const minX = pos.x - pos.width / 2 - 40;
-    const maxX = centerX + 120;
-    const minY = pos.y - Math.max(pos.height, 140) / 2;
-    const maxY = pos.y + Math.max(pos.height, 140) / 2;
+    const centerX = pos.x + pos.width / 2 + BLANK_DROP_LEAF_CENTER_OFFSET_X;
+    const minX = pos.x - pos.width / 2 - BLANK_DROP_LEAF_LEFT_MARGIN;
+    const maxX = centerX + BLANK_DROP_LEAF_RIGHT_MARGIN;
+    const minY = pos.y - Math.max(pos.height, BLANK_DROP_LEAF_MIN_HEIGHT) / 2;
+    const maxY = pos.y + Math.max(pos.height, BLANK_DROP_LEAF_MIN_HEIGHT) / 2;
 
     if (worldX < minX || worldX > maxX || worldY < minY || worldY > maxY) {
       continue;
     }
 
-    const score = Math.abs(worldX - centerX) + Math.abs(worldY - pos.y) * 0.3;
+    const score =
+      Math.abs(worldX - centerX) + Math.abs(worldY - pos.y) * SCORE_WEIGHT_Y_LEAF;
     if (score < bestScore) {
       bestScore = score;
       bestTargetId = candidateId;
