@@ -18,6 +18,8 @@ interface MindMapNodeProps {
   onStartDrag: (nodeId: string, startX: number, startY: number) => void;
 }
 
+const DRAG_START_THRESHOLD_PX = 5;
+
 /**
  * 思维导图节点组件
  * 负责渲染单个节点及其交互功能
@@ -40,6 +42,7 @@ export const MindMapNode = memo(function MindMapNode({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const measureCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isInitialEdit = useRef(true); // 标记是否是初次进入编辑模式
+  const pendingDragRef = useRef<{ startX: number; startY: number } | null>(null);
 
   // 编辑时动态调整的尺寸（临时放大）
   const [editWidth, setEditWidth] = useState(width);
@@ -165,7 +168,35 @@ export const MindMapNode = memo(function MindMapNode({
       return;
     }
     e.stopPropagation();
-    onStartDrag(node.id, e.clientX, e.clientY);
+
+    pendingDragRef.current = { startX: e.clientX, startY: e.clientY };
+
+    const onMove = (moveEvent: MouseEvent) => {
+      const pending = pendingDragRef.current;
+      if (!pending) return;
+
+      const dx = moveEvent.clientX - pending.startX;
+      const dy = moveEvent.clientY - pending.startY;
+      const distance = Math.hypot(dx, dy);
+
+      if (distance < DRAG_START_THRESHOLD_PX) {
+        return;
+      }
+
+      pendingDragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      onStartDrag(node.id, pending.startX, pending.startY);
+    };
+
+    const onUp = () => {
+      pendingDragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   const {
