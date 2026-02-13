@@ -1,13 +1,13 @@
 import type { MindMapNode } from "../../../../types/mindmap";
 
-export function cloneNode(node: MindMapNode): MindMapNode {
+function cloneNode(node: MindMapNode): MindMapNode {
   return {
     ...node,
     children: node.children.map(cloneNode),
   };
 }
 
-export function findNode(
+function findNode(
   root: MindMapNode,
   nodeId: string
 ): MindMapNode | null {
@@ -21,7 +21,7 @@ export function findNode(
   return null;
 }
 
-export function findParentNode(
+function findParentNode(
   root: MindMapNode,
   nodeId: string
 ): MindMapNode | null {

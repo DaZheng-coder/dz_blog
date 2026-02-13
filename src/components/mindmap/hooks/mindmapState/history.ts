@@ -1,13 +1,13 @@
 import type { MindMapAction, MindMapNode } from "../../../../types/mindmap";
 import { applyMindMapAction } from "./reducer";
 
-export interface MindMapHistoryState {
+interface MindMapHistoryState {
   past: MindMapNode[];
   present: MindMapNode | null;
   future: MindMapNode[];
 }
 
-export type MindMapHistoryAction =
+type MindMapHistoryAction =
   | { type: "APPLY"; action: MindMapAction }
   | { type: "UNDO" }
   | { type: "REDO" }

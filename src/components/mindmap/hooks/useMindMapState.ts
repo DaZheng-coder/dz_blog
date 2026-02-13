@@ -6,6 +6,14 @@ import {
   historyReducer,
 } from "./mindmapState/history";
 
+function createNode(text: string): MindMapNode {
+  return {
+    id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    text,
+    children: [],
+  };
+}
+
 /**
  * 思维导图状态管理 Hook
  */
@@ -31,11 +39,7 @@ export function useMindMapState(initialData: MindMapNode | null) {
 
   // 添加子节点
   const addChild = useCallback((parentId: string, text: string = "新节点") => {
-    const newNode: MindMapNode = {
-      id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      text,
-      children: [],
-    };
+    const newNode = createNode(text);
     dispatch({
       type: "APPLY",
       action: { type: ActionType.ADD_CHILD, parentId, newNode },
@@ -44,11 +48,7 @@ export function useMindMapState(initialData: MindMapNode | null) {
 
   // 添加同级节点
   const addSibling = useCallback((nodeId: string, text: string = "新节点") => {
-    const newNode: MindMapNode = {
-      id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      text,
-      children: [],
-    };
+    const newNode = createNode(text);
     dispatch({
       type: "APPLY",
       action: { type: ActionType.ADD_SIBLING, nodeId, newNode },

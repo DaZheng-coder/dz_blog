@@ -1,16 +1,12 @@
 import { memo, useMemo } from "react";
 import type { MindMapNode, NodePosition } from "../../types/mindmap";
+import type { WorldViewport } from "./geometry";
 
 interface MindMapConnectionsProps {
   rootNode: MindMapNode;
   positions: Map<string, NodePosition>;
   isInteracting?: boolean;
-  viewport?: {
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
-  };
+  viewport?: WorldViewport;
 }
 
 interface ConnectionItem {

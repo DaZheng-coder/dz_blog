@@ -55,7 +55,7 @@
 - `MindMapConnections.tsx`：贝塞尔连线
 - `MindMapNode.tsx`：单节点展示与编辑
 - `MindMapDragGhost.tsx` / `MindMapDropPreview.tsx`：拖拽反馈
-- `MindMapGuidePanel.tsx` / `MindMapZoomIndicator.tsx` / `MindMapHistoryControls.tsx`：浮层 UI
+- `MindMapGuidePanel.tsx` / `MindMapZoomIndicator.tsx`：浮层 UI
 
 ## 二、核心数据流
 

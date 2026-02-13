@@ -1,25 +1,14 @@
 import { memo, useCallback, useMemo, type ReactNode } from "react";
 import type { MindMapNode, NodePosition } from "../../types/mindmap";
 import { MindMapNode as MindMapNodeItem } from "./MindMapNode";
-
-interface SubtreeBounds {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-}
+import type { SubtreeBounds, WorldViewport } from "./geometry";
 
 interface MindMapNodeLayerProps {
   rootNode: MindMapNode;
   positions: Map<string, NodePosition>;
   nodeMap: Map<string, MindMapNode>;
   subtreeBoundsMap: Map<string, SubtreeBounds>;
-  viewport?: {
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
-  };
+  viewport?: WorldViewport;
   isInteracting: boolean;
   dropTargetId: string | null;
   selectedNodeId: string | null;
