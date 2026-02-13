@@ -1,5 +1,6 @@
 import aiChatInterfaceRetroMarkdown from "../content/articles/ai-chat-interface-retro.md?raw";
 import buildInPublicWeekly01Markdown from "../content/articles/build-in-public-weekly-01.md?raw";
+import mindmapArchitectureDesignMarkdown from "../content/articles/mindmap-architecture-design.md?raw";
 import mindmapLayoutNotesMarkdown from "../content/articles/mindmap-layout-notes.md?raw";
 import reactMarkdownRenderCheckMarkdown from "../content/articles/react-markdown-render-check.md?raw";
 
@@ -151,6 +152,15 @@ export const projects: BlogProject[] = [
 ];
 
 export const articles: BlogArticle[] = [
+  {
+    slug: "mindmap-architecture-design",
+    title: "MindMap 架构设计总结：从单体组件到可维护分层",
+    publishedAt: "2026-02-13",
+    tags: ["MindMap", "Architecture", "Frontend", "Performance"],
+    excerpt:
+      "总结当前 MindMap 的分层设计、数据流、性能策略与后续演进方向。",
+    content: mindmapArchitectureDesignMarkdown,
+  },
   {
     slug: "react-markdown-render-check",
     title: "ReactMarkdown 渲染验证：文本、图片、表格",

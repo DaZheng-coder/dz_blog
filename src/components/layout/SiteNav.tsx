@@ -18,7 +18,7 @@ function navItemClass(isActive: boolean) {
 export function SiteNav({ current, rightSlot, className = "" }: SiteNavProps) {
   return (
     <nav
-      className={`flex flex-wrap items-center justify-between gap-3 rounded-full border border-[#d8d4cb] bg-white/70 px-6 py-3 ${className}`}
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-full border border-[#d8d4cb] bg-white/70 px-6 py-3 backdrop-blur-sm ${className}`}
     >
       <NavLink to="/" className="text-sm font-semibold text-[#1f2321]">
         大大大正的博客

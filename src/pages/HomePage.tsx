@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { RevealOnView } from "../components/layout/RevealOnView";
 import { SiteNav } from "../components/layout/SiteNav";
 import { articles, projects, workExperiences } from "../data/blog";
 
@@ -17,39 +18,45 @@ export function HomePage() {
   const navigate = useNavigate();
 
   return (
-    <main className="min-h-screen bg-[#f5f2e9] text-[#1f2321]">
+    <main className="page-enter min-h-screen bg-[#f5f2e9] text-[#1f2321]">
       <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
-        <SiteNav current="home" className="mb-10" />
+        <RevealOnView className="nav-enter mb-10">
+          <SiteNav current="home" />
+        </RevealOnView>
 
-        <header>
-          <p className="text-xs uppercase tracking-[0.24em] text-[#5c605c]">
-            Public Build Log
-          </p>
-          <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight md:text-5xl">
-            公开构建产品，持续记录项目与工作经历
-          </h1>
-          <p className="mt-5 max-w-3xl text-base text-[#3a3f3c] md:text-lg">
-            这里是我的个人博客首页。重点记录真实的构建过程：做了什么、为什么做、下一步做什么。
-          </p>
-        </header>
+        <RevealOnView>
+          <header>
+            <p className="text-xs uppercase tracking-[0.24em] text-[#5c605c]">
+              Public Build Log
+            </p>
+            <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight md:text-5xl">
+              公开构建产品，持续记录项目与工作经历
+            </h1>
+            <p className="mt-5 max-w-3xl text-base text-[#3a3f3c] md:text-lg">
+              这里是我的个人博客首页。重点记录真实的构建过程：做了什么、为什么做、下一步做什么。
+            </p>
+          </header>
+        </RevealOnView>
 
-        <section className="my-20  rounded-2xl border border-[#1f2321] bg-[#1f2321] p-8 text-[#f5f2e9]">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl">
-              <h2 className="mt-2 text-3xl font-semibold">🧑‍💻 AI 智能对话</h2>
-              <p className="mt-3 text-sm text-[#d5dbd5] md:text-base">
-                体验创新的 AI
-                驱动对话系统，通过对话深入了解我的工作经历和技能，快来了解我吧。
-              </p>
+        <RevealOnView className="my-20">
+          <section className="rounded-2xl border border-[#1f2321] bg-[#1f2321] p-8 text-[#f5f2e9]">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-2xl">
+                <h2 className="mt-2 text-3xl font-semibold">🧑‍💻 AI 智能对话</h2>
+                <p className="mt-3 text-sm text-[#d5dbd5] md:text-base">
+                  体验创新的 AI
+                  驱动对话系统，通过对话深入了解我的工作经历和技能，快来了解我吧。
+                </p>
+              </div>
+              <button
+                onClick={() => navigate("/chat")}
+                className="card-interactive cursor-pointer rounded-full bg-[#65ff7f] px-6 py-3 text-sm font-semibold text-[#121513] transition hover:bg-[#8dff9e]"
+              >
+                开始对话 {">>>"}
+              </button>
             </div>
-            <button
-              onClick={() => navigate("/chat")}
-              className="cursor-pointer rounded-full bg-[#65ff7f] px-6 py-3 text-sm font-semibold text-[#121513] transition hover:bg-[#8dff9e]"
-            >
-              开始对话 {">>>"}
-            </button>
-          </div>
-        </section>
+          </section>
+        </RevealOnView>
 
         <section className="mt-10">
           <div className="flex items-center justify-between gap-4">
@@ -58,7 +65,7 @@ export function HomePage() {
             </h2>
           </div>
 
-          <div className="mt-6 space-y-8">
+          <RevealOnView className="stagger-grid mt-6 space-y-8">
             {workExperiences.map((experience) => (
               <article
                 key={experience.id}
@@ -67,7 +74,7 @@ export function HomePage() {
                 <p className="text-sm font-medium text-[#5c605c]">
                   {experience.period}
                 </p>
-                <div className="relative rounded-2xl border border-[#d8d4cb] bg-white/70 p-6">
+                <div className="card-interactive relative rounded-2xl border border-[#d8d4cb] bg-white/70 p-6">
                   <span
                     className="absolute -left-[9px] top-8 h-4 w-4 rounded-full border-2 border-[#f5f2e9] bg-[#65ff7f]"
                     aria-hidden="true"
@@ -91,7 +98,7 @@ export function HomePage() {
                 </div>
               </article>
             ))}
-          </div>
+          </RevealOnView>
         </section>
 
         <section className="mt-14">
@@ -99,12 +106,12 @@ export function HomePage() {
             <h2 className="text-2xl font-semibold md:text-3xl">项目详情</h2>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <RevealOnView className="stagger-grid mt-6 grid gap-4 md:grid-cols-2">
             {projects.map((project) => (
               <Link
                 key={project.slug}
                 to={`/projects/${project.slug}`}
-                className="group rounded-2xl border border-[#d8d4cb] bg-white/70 p-6 transition hover:-translate-y-0.5 hover:border-[#65ff7f]"
+                className="card-interactive group rounded-2xl border border-[#d8d4cb] bg-white/70 p-6 transition hover:-translate-y-0.5 hover:border-[#65ff7f]"
               >
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-xl font-semibold">{project.title}</h3>
@@ -132,7 +139,7 @@ export function HomePage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </RevealOnView>
         </section>
 
         <section className="mt-14">
@@ -140,12 +147,12 @@ export function HomePage() {
             <h2 className="text-2xl font-semibold md:text-3xl">文章</h2>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <RevealOnView className="stagger-grid mt-6 grid gap-4 md:grid-cols-3">
             {articles.map((article) => (
               <Link
                 key={article.slug}
                 to={`/articles/${article.slug}`}
-                className="rounded-2xl border border-[#d8d4cb] bg-white/70 p-5 transition hover:-translate-y-0.5 hover:border-[#65ff7f]"
+                className="card-interactive rounded-2xl border border-[#d8d4cb] bg-white/70 p-5 transition hover:-translate-y-0.5 hover:border-[#65ff7f]"
               >
                 <p className="text-xs uppercase tracking-[0.18em] text-[#5c605c]">
                   {article.publishedAt}
@@ -164,23 +171,25 @@ export function HomePage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </RevealOnView>
         </section>
 
-        <footer className="mt-14 border-t border-[#d8d4cb] pt-6 text-sm text-[#4e5350]">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <p>MIT License © {new Date().getFullYear()} Zhengjunqin</p>
-            <p>
-              Contact:{" "}
-              <a
-                className="text-[#1f2321] underline-offset-4 hover:underline"
-                href="mailto:hello@example.com"
-              >
-                hello@example.com
-              </a>
-            </p>
-          </div>
-        </footer>
+        <RevealOnView className="mt-14">
+          <footer className="border-t border-[#d8d4cb] pt-6 text-sm text-[#4e5350]">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <p>MIT License © {new Date().getFullYear()} Zhengjunqin</p>
+              <p>
+                Contact:{" "}
+                <a
+                  className="text-[#1f2321] underline-offset-4 hover:underline"
+                  href="mailto:hello@example.com"
+                >
+                  hello@example.com
+                </a>
+              </p>
+            </div>
+          </footer>
+        </RevealOnView>
       </div>
     </main>
   );

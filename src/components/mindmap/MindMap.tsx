@@ -52,8 +52,6 @@ export function MindMap({
     moveNode,
     undo,
     redo,
-    canUndo,
-    canRedo,
   } = useMindMapState(initialData);
 
   const positions = useLayout(rootNode);
