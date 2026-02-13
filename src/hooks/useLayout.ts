@@ -1,226 +1,20 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MindMapNode, NodePosition } from "../types/mindmap";
+import {
+  computeLayout,
+  countNodes,
+  DEFAULT_LAYOUT_CONFIG,
+  type LayoutConfig,
+} from "./layout/computeLayout";
 
-interface LayoutConfig {
-  minNodeWidth: number;
-  maxNodeWidth: number;
-  minNodeHeight: number;
-  maxNodeHeight: number;
-  horizontalGap: number;
-  verticalGap: number;
-  paddingX: number;
-  paddingY: number;
-  fontSize: number;
-  lineHeight: number;
-}
-
-const DEFAULT_CONFIG: LayoutConfig = {
-  minNodeWidth: 100,
-  maxNodeWidth: 220,
-  minNodeHeight: 40,
-  maxNodeHeight: 500,
-  horizontalGap: 80,
-  verticalGap: 20,
-  paddingX: 16,
-  paddingY: 10,
-  fontSize: 14,
-  lineHeight: 22,
-};
-
-function estimateTextWidth(text: string, fontSize: number): number {
-  let width = 0;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/.test(char)) {
-      width += fontSize * 1.1;
-    } else {
-      width += fontSize * 0.65;
-    }
-  }
-  return width;
-}
-
-function calculateNodeSize(
-  text: string,
-  config: LayoutConfig
-): { width: number; height: number } {
-  const textWidth = estimateTextWidth(text, config.fontSize);
-  const contentWidth = textWidth + config.paddingX * 2;
-
-  let actualWidth = Math.max(config.minNodeWidth, contentWidth);
-  actualWidth = Math.min(config.maxNodeWidth, actualWidth);
-
-  if (actualWidth > config.maxNodeWidth * 0.95) {
-    actualWidth = config.maxNodeWidth;
-  }
-
-  const maxTextWidth = actualWidth - config.paddingX * 2;
-  const lines = Math.max(1, Math.ceil(textWidth / maxTextWidth));
-
-  let actualHeight = lines * config.lineHeight + config.paddingY * 2;
-  actualHeight = Math.max(config.minNodeHeight, actualHeight);
-
-  return { width: actualWidth, height: actualHeight };
-}
-
-function getNodeSize(
-  node: MindMapNode,
-  config: LayoutConfig,
-  nodeSizeCache: Map<string, { width: number; height: number }>
-): { width: number; height: number } {
-  const cached = nodeSizeCache.get(node.id);
-  if (cached) {
-    return cached;
-  }
-
-  const size = calculateNodeSize(node.text, config);
-  nodeSizeCache.set(node.id, size);
-  return size;
-}
-
-function calculateSubtreeHeight(
-  node: MindMapNode,
-  config: LayoutConfig,
-  nodeSizeCache: Map<string, { width: number; height: number }>,
-  subtreeHeightCache: Map<string, number>
-): number {
-  const cached = subtreeHeightCache.get(node.id);
-  if (cached !== undefined) {
-    return cached;
-  }
-
-  const nodeSize = getNodeSize(node, config, nodeSizeCache);
-
-  if (node.collapsed || !node.children || node.children.length === 0) {
-    subtreeHeightCache.set(node.id, nodeSize.height);
-    return nodeSize.height;
-  }
-
-  const childrenHeight = node.children.reduce((sum, child) => {
-    return (
-      sum +
-      calculateSubtreeHeight(child, config, nodeSizeCache, subtreeHeightCache)
-    );
-  }, 0);
-
-  const gaps = (node.children.length - 1) * config.verticalGap;
-  const totalChildrenHeight = childrenHeight + gaps;
-
-  const subtreeHeight = Math.max(nodeSize.height, totalChildrenHeight);
-  subtreeHeightCache.set(node.id, subtreeHeight);
-  return subtreeHeight;
-}
-
-function collectLevelWidths(
-  node: MindMapNode,
-  level: number,
-  config: LayoutConfig,
-  levelWidths: Map<number, number>,
-  nodeSizeCache: Map<string, { width: number; height: number }>
-): void {
-  const nodeSize = getNodeSize(node, config, nodeSizeCache);
-  const currentMaxWidth = levelWidths.get(level) || 0;
-  levelWidths.set(level, Math.max(currentMaxWidth, nodeSize.width));
-
-  if (!node.collapsed && node.children && node.children.length > 0) {
-    for (const child of node.children) {
-      collectLevelWidths(child, level + 1, config, levelWidths, nodeSizeCache);
-    }
-  }
-}
-
-function layoutNode(
-  node: MindMapNode,
-  x: number,
-  y: number,
-  level: number,
-  config: LayoutConfig,
-  positions: Map<string, NodePosition>,
-  parentCollapsed: boolean,
-  levelWidths: Map<number, number>,
-  levelLeftEdges: Map<number, number>,
-  nodeSizeCache: Map<string, { width: number; height: number }>,
-  subtreeHeightCache: Map<string, number>
-): void {
-  const nodeSize = getNodeSize(node, config, nodeSizeCache);
-
-  positions.set(node.id, {
-    id: node.id,
-    x,
-    y,
-    width: nodeSize.width,
-    height: nodeSize.height,
-    level,
-    visible: !parentCollapsed,
-  });
-
-  if (node.collapsed || !node.children || node.children.length === 0) {
-    return;
-  }
-
-  const childrenTotalHeight = node.children.reduce((sum, child) => {
-    return (
-      sum +
-      calculateSubtreeHeight(child, config, nodeSizeCache, subtreeHeightCache)
-    );
-  }, 0);
-  const childrenGaps = (node.children.length - 1) * config.verticalGap;
-  const actualChildrenHeight = childrenTotalHeight + childrenGaps;
-
-  let currentY = y - actualChildrenHeight / 2;
-
-  const childLevel = level + 1;
-  let childLeftEdge: number;
-
-  if (levelLeftEdges.has(childLevel)) {
-    childLeftEdge = levelLeftEdges.get(childLevel)!;
-  } else {
-    const parentLevelMaxWidth = levelWidths.get(level) || nodeSize.width;
-    if (level === 0) {
-      childLeftEdge = parentLevelMaxWidth / 2 + config.horizontalGap;
-    } else {
-      const parentLeftEdge = levelLeftEdges.get(level) || 0;
-      childLeftEdge =
-        parentLeftEdge + parentLevelMaxWidth + config.horizontalGap;
-    }
-    levelLeftEdges.set(childLevel, childLeftEdge);
-  }
-
-  for (const child of node.children) {
-    const childSize = getNodeSize(child, config, nodeSizeCache);
-    const childSubtreeHeight = calculateSubtreeHeight(
-      child,
-      config,
-      nodeSizeCache,
-      subtreeHeightCache
-    );
-    const childY = currentY + childSubtreeHeight / 2;
-    const childCenterX = childLeftEdge + childSize.width / 2;
-
-    layoutNode(
-      child,
-      childCenterX,
-      childY,
-      childLevel,
-      config,
-      positions,
-      parentCollapsed || (node.collapsed ?? false),
-      levelWidths,
-      levelLeftEdges,
-      nodeSizeCache,
-      subtreeHeightCache
-    );
-
-    currentY += childSubtreeHeight + config.verticalGap;
-  }
-}
+const LAYOUT_WORKER_NODE_THRESHOLD = 500;
 
 export function useLayout(
   rootNode: MindMapNode | null,
   config: Partial<LayoutConfig> = {}
 ): Map<string, NodePosition> {
   const finalConfig = useMemo(
-    () => ({ ...DEFAULT_CONFIG, ...config }),
+    () => ({ ...DEFAULT_LAYOUT_CONFIG, ...config }),
     [
       config.minNodeWidth,
       config.maxNodeWidth,
@@ -235,38 +29,71 @@ export function useLayout(
     ]
   );
 
-  return useMemo(() => {
-    const positions = new Map<string, NodePosition>();
-    const levelWidths = new Map<number, number>();
-    const levelLeftEdges = new Map<number, number>();
-    const nodeSizeCache = new Map<string, { width: number; height: number }>();
-    const subtreeHeightCache = new Map<string, number>();
+  const workerRef = useRef<Worker | null>(null);
+  const workerRequestIdRef = useRef(0);
+  const [workerPositions, setWorkerPositions] = useState<
+    Map<string, NodePosition>
+  >(new Map());
 
-    if (!rootNode) {
-      return positions;
+  const nodeCount = useMemo(() => countNodes(rootNode), [rootNode]);
+  const useWorker = nodeCount > LAYOUT_WORKER_NODE_THRESHOLD;
+
+  const syncPositions = useMemo(() => {
+    if (useWorker) {
+      return new Map<string, NodePosition>();
+    }
+    return computeLayout(rootNode, finalConfig);
+  }, [useWorker, rootNode, finalConfig]);
+
+  useEffect(() => {
+    if (!useWorker || !rootNode) {
+      return;
     }
 
-    collectLevelWidths(rootNode, 0, finalConfig, levelWidths, nodeSizeCache);
+    if (!workerRef.current) {
+      workerRef.current = new Worker(
+        new URL("./layout/layout.worker.ts", import.meta.url),
+        { type: "module" }
+      );
+    }
 
-    const rootSize = getNodeSize(rootNode, finalConfig, nodeSizeCache);
-    levelLeftEdges.set(0, -rootSize.width / 2);
+    workerRequestIdRef.current += 1;
+    const currentRequestId = workerRequestIdRef.current;
 
-    layoutNode(
+    const worker = workerRef.current;
+    worker.onmessage = (
+      event: MessageEvent<{
+        requestId: number;
+        entries: Array<[string, NodePosition]>;
+      }>
+    ) => {
+      if (event.data.requestId !== workerRequestIdRef.current) {
+        return;
+      }
+      setWorkerPositions(new Map(event.data.entries));
+    };
+
+    worker.postMessage({
+      requestId: currentRequestId,
       rootNode,
-      0,
-      0,
-      0,
-      finalConfig,
-      positions,
-      false,
-      levelWidths,
-      levelLeftEdges,
-      nodeSizeCache,
-      subtreeHeightCache
-    );
+      config: finalConfig,
+    });
+  }, [useWorker, rootNode, finalConfig]);
 
-    return positions;
-  }, [rootNode, finalConfig]);
+  useEffect(() => {
+    if (!useWorker) {
+      setWorkerPositions(new Map());
+    }
+  }, [useWorker, rootNode]);
+
+  useEffect(() => {
+    return () => {
+      workerRef.current?.terminate();
+      workerRef.current = null;
+    };
+  }, []);
+
+  return useWorker ? workerPositions : syncPositions;
 }
 
 export function getLayoutBounds(positions: Map<string, NodePosition>): {

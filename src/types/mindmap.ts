@@ -84,4 +84,9 @@ export type MindMapAction =
   | { type: ActionType.ADD_SIBLING; nodeId: string; newNode: MindMapNode }
   | { type: ActionType.DELETE_NODE; nodeId: string }
   | { type: ActionType.TOGGLE_COLLAPSE; nodeId: string }
-  | { type: ActionType.MOVE_NODE; nodeId: string; targetParentId: string };
+  | {
+      type: ActionType.MOVE_NODE;
+      nodeId: string;
+      targetParentId: string;
+      targetIndex?: number;
+    };

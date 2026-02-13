@@ -163,6 +163,34 @@ export function buildNodeMap(
   return map;
 }
 
+export function buildParentIdMap(
+  rootNode: MindMapNodeType | null
+): Map<string, string | null> {
+  const map = new Map<string, string | null>();
+  if (!rootNode) {
+    return map;
+  }
+
+  const stack: Array<{ node: MindMapNodeType; parentId: string | null }> = [
+    { node: rootNode, parentId: null },
+  ];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) break;
+    map.set(current.node.id, current.parentId);
+
+    for (let i = current.node.children.length - 1; i >= 0; i--) {
+      stack.push({
+        node: current.node.children[i],
+        parentId: current.node.id,
+      });
+    }
+  }
+
+  return map;
+}
+
 export function buildVisibleChildrenMap(
   nodeMap: Map<string, MindMapNodeType>,
   positions: Map<string, NodePosition>

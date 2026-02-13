@@ -9,11 +9,11 @@ import { MindMapNodeLayer } from "./MindMapNodeLayer";
 import { MindMapDropPreview } from "./MindMapDropPreview";
 import { isSamePreviewPosition, type PreviewPosition } from "./types";
 import { MindMapConnections } from "./MindMapConnections";
-import { MindMapHistoryControls } from "./MindMapHistoryControls";
 import {
   HIT_TEST_CELL_SIZE,
   buildHitBuckets,
   buildNodeMap,
+  buildParentIdMap,
   buildVisibleChildrenMap,
   collectSubtreeBottom,
   collectSubtreeBounds,
@@ -28,6 +28,205 @@ interface MindMapProps {
   initialData: MindMapNodeType;
   width?: number;
   height?: number;
+}
+
+function getInsertIndexByPointerY(
+  pointerY: number,
+  visibleChildren: string[],
+  positions: Map<string, { y: number; height: number }>,
+  subtreeBoundsMap: Map<string, SubtreeBounds>,
+  targetPos?: { y: number; height: number }
+): number {
+  if (visibleChildren.length === 0) {
+    return 0;
+  }
+
+  // 鼠标在目标节点本体或其下方少量缓冲区时，优先插到最前（更符合直觉）
+  if (targetPos) {
+    const targetBottom = targetPos.y + targetPos.height / 2;
+    if (pointerY <= targetBottom + 24) {
+      return 0;
+    }
+  }
+
+  if (visibleChildren.length === 1) {
+    const onlyId = visibleChildren[0];
+    const onlyPos = positions.get(onlyId);
+    if (!onlyPos) return 1;
+    return pointerY < onlyPos.y ? 0 : 1;
+  }
+
+  const firstBounds = subtreeBoundsMap.get(visibleChildren[0]);
+  if (firstBounds && pointerY < firstBounds.minY) {
+    return 0;
+  }
+
+  for (let i = 0; i < visibleChildren.length - 1; i++) {
+    const currentId = visibleChildren[i];
+    const nextId = visibleChildren[i + 1];
+    const currentBounds = subtreeBoundsMap.get(currentId);
+    const nextBounds = subtreeBoundsMap.get(nextId);
+
+    if (!currentBounds || !nextBounds) {
+      continue;
+    }
+
+    const boundaryY = (currentBounds.maxY + nextBounds.minY) / 2;
+    if (pointerY < boundaryY) {
+      return i + 1;
+    }
+  }
+
+  return visibleChildren.length;
+}
+
+function getPreviewYByInsertIndex(
+  insertIndex: number,
+  visibleChildren: string[],
+  positions: Map<string, { y: number; height: number }>,
+  subtreeBottomMap: Map<string, number>,
+  subtreeBoundsMap: Map<string, SubtreeBounds>,
+  fallbackY: number
+): number {
+  if (visibleChildren.length === 0) {
+    return fallbackY;
+  }
+
+  if (insertIndex <= 0) {
+    const firstId = visibleChildren[0];
+    const firstBounds = subtreeBoundsMap.get(firstId);
+    if (firstBounds) {
+      return firstBounds.minY - 40;
+    }
+    const firstPos = positions.get(firstId);
+    return firstPos ? firstPos.y - 40 : fallbackY;
+  }
+
+  if (insertIndex >= visibleChildren.length) {
+    const lastId = visibleChildren[visibleChildren.length - 1];
+    const lastPos = positions.get(lastId);
+    if (lastPos) {
+      const subtreeBottom =
+        subtreeBottomMap.get(lastId) ?? lastPos.y + lastPos.height / 2;
+      return subtreeBottom + 40;
+    }
+    return fallbackY;
+  }
+
+  const prevId = visibleChildren[insertIndex - 1];
+  const nextId = visibleChildren[insertIndex];
+  const prevBounds = subtreeBoundsMap.get(prevId);
+  const nextBounds = subtreeBoundsMap.get(nextId);
+
+  if (prevBounds && nextBounds) {
+    return (prevBounds.maxY + nextBounds.minY) / 2;
+  }
+
+  const prevPos = positions.get(prevId);
+  const nextPos = positions.get(nextId);
+  if (prevPos && nextPos) {
+    return (prevPos.y + nextPos.y) / 2;
+  }
+
+  return fallbackY;
+}
+
+function resolveDropTargetInBlankArea(params: {
+  worldX: number;
+  worldY: number;
+  hitCol: number;
+  hitRow: number;
+  hitTestBuckets: Map<string, Array<{ id: string }>>;
+  positions: Map<string, { x: number; y: number; width: number; height: number; visible: boolean }>;
+  visibleChildrenMap: Map<string, string[]>;
+  parentIdMap: Map<string, string | null>;
+  draggedNodeId: string;
+  subtreeBottomMap: Map<string, number>;
+  subtreeBoundsMap: Map<string, SubtreeBounds>;
+}): string | null {
+  const {
+    worldX,
+    worldY,
+    hitCol,
+    hitRow,
+    hitTestBuckets,
+    positions,
+    visibleChildrenMap,
+    parentIdMap,
+    draggedNodeId,
+    subtreeBottomMap,
+    subtreeBoundsMap,
+  } = params;
+
+  const candidateIds = new Set<string>();
+  const radius = 2;
+
+  for (let col = hitCol - radius; col <= hitCol + radius; col++) {
+    for (let row = hitRow - radius; row <= hitRow + radius; row++) {
+      const bucket = hitTestBuckets.get(getHitBucketKey(col, row));
+      if (!bucket) continue;
+      for (const item of bucket) {
+        candidateIds.add(item.id);
+        const parentId = parentIdMap.get(item.id);
+        if (parentId) {
+          candidateIds.add(parentId);
+        }
+      }
+    }
+  }
+
+  let bestTargetId: string | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const candidateId of candidateIds) {
+    if (candidateId === draggedNodeId) continue;
+    const pos = positions.get(candidateId);
+    if (!pos || !pos.visible) continue;
+
+    const visibleChildren = visibleChildrenMap.get(candidateId) || [];
+
+    if (visibleChildren.length > 0) {
+      const firstId = visibleChildren[0];
+      const lastId = visibleChildren[visibleChildren.length - 1];
+      const firstChildPos = positions.get(firstId);
+      if (!firstChildPos) continue;
+
+      const firstBounds = subtreeBoundsMap.get(firstId);
+      const minY = (firstBounds?.minY ?? firstChildPos.y - firstChildPos.height / 2) - 140;
+      const maxY = (subtreeBottomMap.get(lastId) ?? firstChildPos.y + firstChildPos.height / 2) + 140;
+      const minX = pos.x + pos.width / 2 - 60;
+      const maxX = firstChildPos.x + 180;
+
+      if (worldX < minX || worldX > maxX || worldY < minY || worldY > maxY) {
+        continue;
+      }
+
+      const score = Math.abs(worldX - firstChildPos.x) + Math.abs(worldY - pos.y) * 0.2;
+      if (score < bestScore) {
+        bestScore = score;
+        bestTargetId = candidateId;
+      }
+      continue;
+    }
+
+    const centerX = pos.x + pos.width / 2 + 80;
+    const minX = pos.x - pos.width / 2 - 40;
+    const maxX = centerX + 120;
+    const minY = pos.y - Math.max(pos.height, 140) / 2;
+    const maxY = pos.y + Math.max(pos.height, 140) / 2;
+
+    if (worldX < minX || worldX > maxX || worldY < minY || worldY > maxY) {
+      continue;
+    }
+
+    const score = Math.abs(worldX - centerX) + Math.abs(worldY - pos.y) * 0.3;
+    if (score < bestScore) {
+      bestScore = score;
+      bestTargetId = candidateId;
+    }
+  }
+
+  return bestTargetId;
 }
 
 /**
@@ -57,6 +256,7 @@ export function MindMap({
   const positions = useLayout(rootNode);
 
   const nodeMap = useMemo(() => buildNodeMap(rootNode), [rootNode]);
+  const parentIdMap = useMemo(() => buildParentIdMap(rootNode), [rootNode]);
 
   const visibleNodeBounds = useMemo(
     () => collectVisibleNodeBounds(positions),
@@ -95,6 +295,7 @@ export function MindMap({
   const [isDraggingNode, setIsDraggingNode] = useState(false);
   const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [dropInsertIndex, setDropInsertIndex] = useState<number | null>(null);
   const [dragMousePos, setDragMousePos] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [previewPosition, setPreviewPosition] =
@@ -104,6 +305,8 @@ export function MindMap({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const pendingPointerRef = useRef<{ x: number; y: number } | null>(null);
   const pointerFrameRef = useRef<number | null>(null);
+  const hasAutoCenteredRef = useRef(false);
+  const lastRootIdRef = useRef<string | null>(null);
   const viewRef = useRef({
     scale: 1,
     translateX: width / 2,
@@ -144,14 +347,22 @@ export function MindMap({
   ]);
 
   useEffect(() => {
-    if (positions.size > 0 && rootNode) {
-      const bounds = getLayoutBounds(positions);
-      const centerX = width / 2 - (bounds.minX + bounds.width / 2) * scale;
-      const centerY = height / 2 - (bounds.minY + bounds.height / 2) * scale;
-      setTranslateX(centerX);
-      setTranslateY(centerY);
+    if (lastRootIdRef.current !== rootNode?.id) {
+      lastRootIdRef.current = rootNode?.id ?? null;
+      hasAutoCenteredRef.current = false;
     }
-  }, []);
+
+    if (!rootNode || positions.size === 0 || hasAutoCenteredRef.current) {
+      return;
+    }
+
+    const bounds = getLayoutBounds(positions);
+    const centerX = width / 2 - (bounds.minX + bounds.width / 2) * scale;
+    const centerY = height / 2 - (bounds.minY + bounds.height / 2) * scale;
+    setTranslateX(centerX);
+    setTranslateY(centerY);
+    hasAutoCenteredRef.current = true;
+  }, [positions, rootNode, width, height, scale]);
 
   useEffect(() => {
     const prev = viewportSizeRef.current;
@@ -288,9 +499,26 @@ export function MindMap({
         }
       }
 
+      if (!targetId) {
+        targetId = resolveDropTargetInBlankArea({
+          worldX,
+          worldY,
+          hitCol,
+          hitRow,
+          hitTestBuckets,
+          positions,
+          visibleChildrenMap,
+          parentIdMap,
+          draggedNodeId,
+          subtreeBottomMap,
+          subtreeBoundsMap,
+        });
+      }
+
       setDropTargetId((prev) => (prev === targetId ? prev : targetId));
 
       if (!targetId) {
+        setDropInsertIndex((prev) => (prev === null ? prev : null));
         setPreviewPosition((prev) => (prev === null ? prev : null));
         return;
       }
@@ -301,11 +529,23 @@ export function MindMap({
       const targetNode = nodeMap.get(targetId);
 
       if (!targetPos || !draggedPos || !draggedData || !targetNode) {
+        setDropInsertIndex((prev) => (prev === null ? prev : null));
         setPreviewPosition((prev) => (prev === null ? prev : null));
         return;
       }
 
       const visibleChildren = visibleChildrenMap.get(targetId) || [];
+      const insertIndex =
+        visibleChildren.length === 0
+          ? targetNode.children.length
+          : getInsertIndexByPointerY(
+              worldY,
+              visibleChildren,
+              positions,
+              subtreeBoundsMap,
+              targetPos
+            );
+      setDropInsertIndex((prev) => (prev === insertIndex ? prev : insertIndex));
 
       const previewLevel = targetPos.level + 1;
       let previewX: number;
@@ -316,18 +556,14 @@ export function MindMap({
         previewX = firstChildPos
           ? firstChildPos.x
           : targetPos.x + targetPos.width / 2 + 100;
-
-        const lastChildId = visibleChildren[visibleChildren.length - 1];
-        const lastChildPos = positions.get(lastChildId);
-        if (lastChildPos) {
-          const subtreeBottom =
-            subtreeBottomMap.get(lastChildId) ??
-            lastChildPos.y + lastChildPos.height / 2;
-          const subtreeTop = lastChildPos.y - lastChildPos.height / 2;
-          previewY = subtreeTop + (subtreeBottom - subtreeTop) + 40;
-        } else {
-          previewY = targetPos.y;
-        }
+        previewY = getPreviewYByInsertIndex(
+          insertIndex,
+          visibleChildren,
+          positions,
+          subtreeBottomMap,
+          subtreeBoundsMap,
+          targetPos.y
+        );
       } else {
         previewX =
           targetPos.x + targetPos.width / 2 + 100 + draggedPos.width / 2;
@@ -358,7 +594,9 @@ export function MindMap({
       hitTestBuckets,
       positions,
       nodeMap,
+      parentIdMap,
       subtreeBottomMap,
+      subtreeBoundsMap,
       visibleChildrenMap,
     ]
   );
@@ -396,12 +634,17 @@ export function MindMap({
     }
 
     if (isDraggingNode && draggedNodeId && dropTargetId) {
-      moveNode(draggedNodeId, dropTargetId);
+      moveNode(
+        draggedNodeId,
+        dropTargetId,
+        dropInsertIndex === null ? undefined : dropInsertIndex
+      );
     }
 
     setIsDraggingNode(false);
     setDraggedNodeId(null);
     setDropTargetId(null);
+    setDropInsertIndex(null);
     setPreviewPosition(null);
     setDragMousePos({ x: 0, y: 0 });
     setDragOffset({ x: 0, y: 0 });
@@ -416,6 +659,7 @@ export function MindMap({
     isDraggingNode,
     draggedNodeId,
     dropTargetId,
+    dropInsertIndex,
     moveNode,
   ]);
 
@@ -456,6 +700,7 @@ export function MindMap({
 
       setIsDraggingNode(true);
       setDraggedNodeId(nodeId);
+      setDropInsertIndex(null);
       setDragMousePos({ x: startX, y: startY });
       setDragOffset({
         x: startX - nodeScreenTopLeftX,
@@ -489,12 +734,6 @@ export function MindMap({
     <div className="relative w-full h-full bg-gray-50 overflow-hidden">
       <MindMapGuidePanel />
       <MindMapZoomIndicator scale={scale} />
-      {/* <MindMapHistoryControls
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onUndo={undo}
-        onRedo={redo}
-      /> */}
 
       <MindMapDragGhost
         isDraggingNode={isDraggingNode}

@@ -100,7 +100,8 @@ export function addSiblingNodeInTree(
 export function moveNodeInTree(
   root: MindMapNode,
   nodeId: string,
-  targetParentId: string
+  targetParentId: string,
+  targetIndex?: number
 ): MindMapNode | null {
   if (root.id === nodeId || nodeId === targetParentId) {
     return root;
@@ -113,11 +114,33 @@ export function moveNodeInTree(
     return root;
   }
 
+  const sourceParent = findParentNode(root, nodeId);
+  const sourceIndex = sourceParent
+    ? sourceParent.children.findIndex((child) => child.id === nodeId)
+    : -1;
+
+  let insertIndex = targetIndex;
+  if (
+    insertIndex !== undefined &&
+    sourceParent &&
+    sourceParent.id === targetParentId &&
+    sourceIndex !== -1 &&
+    sourceIndex < insertIndex
+  ) {
+    insertIndex -= 1;
+  }
+
   let newRoot = deleteNodeInTree(root, nodeId);
   if (!newRoot) return root;
 
   newRoot = updateNodeInTree(newRoot, targetParentId, (parent) => {
-    parent.children = [...parent.children, cloneNode(nodeToMove)];
+    const newChildren = [...parent.children];
+    const nextIndex =
+      insertIndex === undefined
+        ? newChildren.length
+        : Math.max(0, Math.min(insertIndex, newChildren.length));
+    newChildren.splice(nextIndex, 0, cloneNode(nodeToMove));
+    parent.children = newChildren;
   });
 
   return newRoot;

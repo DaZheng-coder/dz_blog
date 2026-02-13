@@ -37,7 +37,12 @@ export function applyMindMapAction(
       });
 
     case ActionType.MOVE_NODE:
-      return moveNodeInTree(state, action.nodeId, action.targetParentId);
+      return moveNodeInTree(
+        state,
+        action.nodeId,
+        action.targetParentId,
+        action.targetIndex
+      );
 
     default:
       return state;

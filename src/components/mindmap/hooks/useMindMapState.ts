@@ -72,12 +72,15 @@ export function useMindMapState(initialData: MindMapNode | null) {
   }, []);
 
   // 移动节点
-  const moveNode = useCallback((nodeId: string, targetParentId: string) => {
-    dispatch({
-      type: "APPLY",
-      action: { type: ActionType.MOVE_NODE, nodeId, targetParentId },
-    });
-  }, []);
+  const moveNode = useCallback(
+    (nodeId: string, targetParentId: string, targetIndex?: number) => {
+      dispatch({
+        type: "APPLY",
+        action: { type: ActionType.MOVE_NODE, nodeId, targetParentId, targetIndex },
+      });
+    },
+    []
+  );
 
   const undo = useCallback(() => {
     dispatch({ type: "UNDO" });
