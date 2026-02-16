@@ -5,6 +5,7 @@ import { ChatPage } from "./pages/ChatPage";
 import { HomePage } from "./pages/HomePage";
 import { MindMapPage } from "./pages/MindMapPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
+import { ClipPage } from "./pages/ClipPage";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/projects/:slug" element={<ProjectDetailPage />} />
         <Route path="/articles" element={<ArticleListPage />} />
         <Route path="/articles/:slug" element={<ArticleDetailPage />} />
+        <Route path="/clip" element={<ClipPage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
     </BrowserRouter>

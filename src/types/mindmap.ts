@@ -66,26 +66,26 @@ export interface EditState {
 /**
  * 操作类型枚举
  */
-export enum ActionType {
-  UPDATE_NODE = 'UPDATE_NODE',
-  ADD_CHILD = 'ADD_CHILD',
-  ADD_SIBLING = 'ADD_SIBLING',
-  DELETE_NODE = 'DELETE_NODE',
-  TOGGLE_COLLAPSE = 'TOGGLE_COLLAPSE',
-  MOVE_NODE = 'MOVE_NODE',
-}
+export const ActionType = {
+  UPDATE_NODE: "UPDATE_NODE",
+  ADD_CHILD: "ADD_CHILD",
+  ADD_SIBLING: "ADD_SIBLING",
+  DELETE_NODE: "DELETE_NODE",
+  TOGGLE_COLLAPSE: "TOGGLE_COLLAPSE",
+  MOVE_NODE: "MOVE_NODE",
+} as const;
 
 /**
  * 状态更新 Action
  */
 export type MindMapAction =
-  | { type: ActionType.UPDATE_NODE; nodeId: string; text: string }
-  | { type: ActionType.ADD_CHILD; parentId: string; newNode: MindMapNode }
-  | { type: ActionType.ADD_SIBLING; nodeId: string; newNode: MindMapNode }
-  | { type: ActionType.DELETE_NODE; nodeId: string }
-  | { type: ActionType.TOGGLE_COLLAPSE; nodeId: string }
+  | { type: typeof ActionType.UPDATE_NODE; nodeId: string; text: string }
+  | { type: typeof ActionType.ADD_CHILD; parentId: string; newNode: MindMapNode }
+  | { type: typeof ActionType.ADD_SIBLING; nodeId: string; newNode: MindMapNode }
+  | { type: typeof ActionType.DELETE_NODE; nodeId: string }
+  | { type: typeof ActionType.TOGGLE_COLLAPSE; nodeId: string }
   | {
-      type: ActionType.MOVE_NODE;
+      type: typeof ActionType.MOVE_NODE;
       nodeId: string;
       targetParentId: string;
       targetIndex?: number;
