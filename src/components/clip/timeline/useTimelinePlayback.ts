@@ -69,6 +69,7 @@ export function useTimelinePlayback({
   const [currentTimeSeconds, setCurrentTimeSeconds] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [trackViewportWidth, setTrackViewportWidth] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
   const isPlaying = typeof playing === "boolean" ? playing : internalPlaying;
 
   const updatePlaying = useCallback(
@@ -216,6 +217,34 @@ export function useTimelinePlayback({
     const observer = new ResizeObserver(update);
     observer.observe(viewport);
     return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) {
+      return;
+    }
+
+    let rafId = 0;
+    const handleScroll = () => {
+      if (rafId) {
+        return;
+      }
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        setScrollLeft(scroller.scrollLeft);
+      });
+    };
+
+    setScrollLeft(scroller.scrollLeft);
+    scroller.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      scroller.removeEventListener("scroll", handleScroll);
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
   }, []);
 
   const timeFromClientX = useCallback(
@@ -438,6 +467,8 @@ export function useTimelinePlayback({
     majorGridWidth,
     minorGridWidth,
     timelineWidthPx,
+    scrollLeft,
+    trackViewportWidth,
     minZoom: zoomBounds.minZoom,
     maxZoom: zoomBounds.maxZoom,
     rulerMarks,

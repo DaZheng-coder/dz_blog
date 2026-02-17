@@ -17,6 +17,42 @@ import { subtleButtonClass } from "../shared/styles";
 import type { ClipDragAsset, ClipMediaAsset } from "../shared/types";
 import { createAudioAsset, createVideoAsset } from "./videoAsset";
 
+const MEDIA_IMPORT_CONCURRENCY = 2;
+
+async function runWithConcurrency<TInput, TResult>(
+  items: TInput[],
+  concurrency: number,
+  worker: (item: TInput, index: number) => Promise<TResult>
+) {
+  if (items.length === 0) {
+    return [] as PromiseSettledResult<TResult>[];
+  }
+
+  const maxConcurrency = Math.max(1, concurrency);
+  const results = new Array<PromiseSettledResult<TResult>>(items.length);
+  let nextIndex = 0;
+
+  async function runner() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      try {
+        const value = await worker(items[currentIndex], currentIndex);
+        results[currentIndex] = { status: "fulfilled", value };
+      } catch (reason) {
+        results[currentIndex] = { status: "rejected", reason };
+      }
+    }
+  }
+
+  const runners = Array.from(
+    { length: Math.min(maxConcurrency, items.length) },
+    () => runner()
+  );
+  await Promise.all(runners);
+  return results;
+}
+
 export function ClipMediaPanel() {
   const setDraggingAsset = useClipEditorStore((state) => state.setDraggingAsset);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -138,12 +174,13 @@ export function ClipMediaPanel() {
 
     setIsParsing(true);
     try {
-      const parsed = await Promise.allSettled(
-        mediaFiles.map((file) =>
+      const parsed = await runWithConcurrency(
+        mediaFiles,
+        MEDIA_IMPORT_CONCURRENCY,
+        (file) =>
           file.type.startsWith("audio/")
             ? createAudioAsset(file)
             : createVideoAsset(file)
-        )
       );
 
       setAssets((prev) => {

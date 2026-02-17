@@ -1,4 +1,10 @@
-import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, RefObject } from "react";
+import {
+  memo,
+  useMemo,
+  type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
+  type RefObject,
+} from "react";
 import { MIN_CLIP_WIDTH } from "./clipTimelineConfig";
 import { ClipTimelineClipItem } from "./ClipTimelineClipItem";
 import { ClipTimelineDragPreviewItem } from "./ClipTimelineDragPreviewItem";
@@ -27,6 +33,8 @@ type ClipTimelineLaneProps = {
   timelineWidthPx: number;
   majorGridWidth: number;
   minorGridWidth: number;
+  viewportStartPx?: number;
+  viewportWidthPx?: number;
   onTrackClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onTrackDragOver: (event: ReactDragEvent<HTMLDivElement>) => void;
   onTrackDragLeave: (event: ReactDragEvent<HTMLDivElement>) => void;
@@ -47,7 +55,7 @@ type ClipTimelineLaneProps = {
   ) => void;
 };
 
-export function ClipTimelineLane({
+export const ClipTimelineLane = memo(function ClipTimelineLane({
   laneRef,
   laneId,
   laneHeightClassName,
@@ -64,6 +72,8 @@ export function ClipTimelineLane({
   timelineWidthPx,
   majorGridWidth,
   minorGridWidth,
+  viewportStartPx,
+  viewportWidthPx,
   onTrackClick,
   onTrackDragOver,
   onTrackDragLeave,
@@ -74,6 +84,33 @@ export function ClipTimelineLane({
   onClipLeftResizeStart,
   onClipResizeStart,
 }: ClipTimelineLaneProps) {
+  const visibleClips = useMemo(() => {
+    if (
+      typeof viewportStartPx !== "number" ||
+      typeof viewportWidthPx !== "number" ||
+      viewportWidthPx <= 0
+    ) {
+      return clips;
+    }
+
+    const bufferPx = Math.max(240, viewportWidthPx * 0.5);
+    const minX = Math.max(0, viewportStartPx - bufferPx);
+    const maxX = viewportStartPx + viewportWidthPx + bufferPx;
+
+    return clips.filter((clip) => {
+      const clipStartX = clip.startSeconds * pixelsPerSecond;
+      const clipEndX = clipStartX + Math.max(clip.durationSeconds * pixelsPerSecond, MIN_CLIP_WIDTH);
+      return clipEndX >= minX && clipStartX <= maxX;
+    });
+  }, [clips, pixelsPerSecond, viewportStartPx, viewportWidthPx]);
+  const clipIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    clips.forEach((clip, index) => {
+      map.set(clip.id, index);
+    });
+    return map;
+  }, [clips]);
+
   return (
     <div
       ref={laneRef}
@@ -97,11 +134,11 @@ export function ClipTimelineLane({
         </div>
       ) : null}
 
-      {clips.map((clip, index) => (
+      {visibleClips.map((clip) => (
         <ClipTimelineClipItem
           key={clip.id}
           clip={clip}
-          index={index}
+          index={clipIndexById.get(clip.id) ?? 0}
           compact={compact}
           pixelsPerSecond={pixelsPerSecond}
           selectedClipIds={selectedClipIds}
@@ -124,4 +161,4 @@ export function ClipTimelineLane({
       ) : null}
     </div>
   );
-}
+});

@@ -1,4 +1,9 @@
-import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from "react";
+import {
+  memo,
+  useMemo,
+  type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { MIN_CLIP_WIDTH, TRACK_COLORS } from "./clipTimelineConfig";
 import { formatTime } from "./clipTimelineUtils";
 import type { ClipTrackClip } from "../shared/types";
@@ -30,7 +35,7 @@ type ClipTimelineClipItemProps = {
   ) => void;
 };
 
-export function ClipTimelineClipItem({
+export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
   clip,
   index,
   compact = false,
@@ -44,14 +49,21 @@ export function ClipTimelineClipItem({
   onClipLeftResizeStart,
   onClipResizeStart,
 }: ClipTimelineClipItemProps) {
-  const clipWidth = Math.max(clip.durationSeconds * pixelsPerSecond, MIN_CLIP_WIDTH);
+  const clipWidth = useMemo(
+    () => Math.max(clip.durationSeconds * pixelsPerSecond, MIN_CLIP_WIDTH),
+    [clip.durationSeconds, pixelsPerSecond]
+  );
+  const clipX = useMemo(
+    () => clip.startSeconds * pixelsPerSecond,
+    [clip.startSeconds, pixelsPerSecond]
+  );
   const blockClass = compact ? "top-1 h-4 px-1 py-0" : "top-1.5 h-[3.25rem] px-2 py-1";
   const titleClass = compact ? "truncate text-[10px] font-medium leading-4" : "truncate font-medium";
   const handleClass = compact ? "w-2" : "w-3";
   const hasVideoFrames =
     !compact && clip.mediaType === "video" && (clip.frameThumbnails?.length || 0) > 0;
   const hasAudioLevels = clip.mediaType === "audio" && (clip.audioLevels?.length || 0) > 0;
-  const displayedFrames = (() => {
+  const displayedFrames = useMemo(() => {
     if (!hasVideoFrames || !clip.frameThumbnails) {
       return [];
     }
@@ -69,8 +81,8 @@ export function ClipTimelineClipItem({
       );
       return sourceFrames[sourceIndex];
     });
-  })();
-  const displayedAudioLevels = (() => {
+  }, [clip.frameThumbnails, clipWidth, hasVideoFrames]);
+  const displayedAudioLevels = useMemo(() => {
     if (!hasAudioLevels || !clip.audioLevels) {
       return [];
     }
@@ -88,7 +100,7 @@ export function ClipTimelineClipItem({
       );
       return sourceLevels[sourceIndex];
     });
-  })();
+  }, [clip.audioLevels, clipWidth, hasAudioLevels]);
 
   return (
     <article
@@ -99,13 +111,13 @@ export function ClipTimelineClipItem({
       }}
       onDragStart={(event) => onClipDragStart(event, clip)}
       onDragEnd={onClipDragEnd}
-      className={`absolute cursor-grab rounded-md border bg-gradient-to-r text-xs text-white ${blockClass} ${
+      className={`absolute left-0 cursor-grab rounded-md border bg-gradient-to-r text-xs text-white will-change-transform ${blockClass} ${
         TRACK_COLORS[index % TRACK_COLORS.length]
       } ${selectedClipIds?.includes(clip.id) ? "ring-2 ring-[#67e8f9]" : ""} ${
         draggingClipId === clip.id ? "opacity-60" : "opacity-100"
       }`}
       style={{
-        left: `${clip.startSeconds * pixelsPerSecond}px`,
+        transform: `translate3d(${clipX}px, 0, 0)`,
         width: `${clipWidth}px`,
       }}
     >
@@ -182,4 +194,4 @@ export function ClipTimelineClipItem({
       />
     </article>
   );
-}
+});

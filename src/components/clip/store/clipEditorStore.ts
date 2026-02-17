@@ -11,6 +11,10 @@ type TimelineFramePayload = {
   isPlaying: boolean;
 };
 
+function sameSingleSelectedId(ids: string[], id: string) {
+  return ids.length === 1 && ids[0] === id;
+}
+
 type ClipEditorStore = {
   draggingAsset: ClipDragAsset | null;
   timelineClips: ClipTrackClip[];
@@ -127,6 +131,20 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
   syncTimelineFrame: ({ timeSeconds, activeClip, isPlaying }) =>
     set((state) => {
       if (activeClip) {
+        const selectedTimelineClipId =
+          state.selectedTimelineClipId === activeClip.id
+            ? state.selectedTimelineClipId
+            : activeClip.id;
+        const selectedTimelineClipIds = sameSingleSelectedId(
+          state.selectedTimelineClipIds,
+          activeClip.id
+        )
+          ? state.selectedTimelineClipIds
+          : [activeClip.id];
+        const selectedTimelineTrack =
+          state.selectedTimelineTrack === "video"
+            ? state.selectedTimelineTrack
+            : "video";
         return {
           previewSource: {
             sourceType: "timeline",
@@ -138,12 +156,22 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
             playheadSeconds: timeSeconds,
             timelinePlaying: isPlaying,
           },
-          selectedTimelineClipId: activeClip.id,
-          selectedTimelineClipIds: [activeClip.id],
-          selectedTimelineTrack: "video",
+          selectedTimelineClipId,
+          selectedTimelineClipIds,
+          selectedTimelineTrack,
         };
       }
       if (isPlaying) {
+        const selectedTimelineClipId =
+          state.selectedTimelineClipId === null
+            ? state.selectedTimelineClipId
+            : null;
+        const selectedTimelineClipIds =
+          state.selectedTimelineClipIds.length === 0
+            ? state.selectedTimelineClipIds
+            : [];
+        const selectedTimelineTrack =
+          state.selectedTimelineTrack === null ? state.selectedTimelineTrack : null;
         return {
           previewSource: {
             sourceType: "empty",
@@ -152,9 +180,9 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
             playheadSeconds: timeSeconds,
             timelinePlaying: isPlaying,
           },
-          selectedTimelineClipId: null,
-          selectedTimelineClipIds: [],
-          selectedTimelineTrack: null,
+          selectedTimelineClipId,
+          selectedTimelineClipIds,
+          selectedTimelineTrack,
         };
       }
       return state;

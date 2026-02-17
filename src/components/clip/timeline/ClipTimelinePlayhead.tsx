@@ -18,12 +18,12 @@ export function ClipTimelinePlayhead({
   const clampedTimeX = Math.max(0, currentTimeX);
   return (
     <div
-      className={`absolute bottom-0 top-0 z-30 -translate-x-1/2 ${
+      className={`absolute bottom-0 top-0 left-0 z-30 will-change-transform ${
         disablePointerEvents ? "pointer-events-none" : ""
       } ${
         isScrubbing ? "cursor-grabbing" : "cursor-grab"
       }`}
-      style={{ left: `${clampedTimeX + startOffsetPx}px` }}
+      style={{ transform: `translate3d(${clampedTimeX + startOffsetPx}px, 0, 0)` }}
       onMouseDown={onPlayheadMouseDown}
     >
       <div className="pointer-events-none absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-[#67e8f9]" />

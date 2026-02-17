@@ -1,4 +1,11 @@
-import { useCallback, useRef, useState, type DragEvent, type RefObject } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type RefObject,
+} from "react";
 import { clamp, readDragAssetFromDataTransfer } from "./clipTimelineUtils";
 import { TRACK_CLIP_MIME } from "../shared/dnd";
 import type { TimelineDragPreview } from "./ClipTimelineTrackView";
@@ -28,6 +35,13 @@ function buildRippleLayout(
   insertedClip: ClipTrackClip
 ) {
   const sorted = sortClipsByStart(baseClips);
+  return buildRippleLayoutFromSorted(sorted, insertedClip);
+}
+
+function buildRippleLayoutFromSorted(
+  sorted: ClipTrackClip[],
+  insertedClip: ClipTrackClip
+) {
   const safeStart = normalizeInsertStart(insertedClip.startSeconds, sorted);
   const inserted = { ...insertedClip, startSeconds: safeStart };
   const before = sorted.filter((clip) => clip.startSeconds < safeStart);
@@ -78,11 +92,13 @@ export function useTimelineDragAndDrop({
   const dragOffsetSecondsRef = useRef(0);
   const dragPreviewSignatureRef = useRef("");
   const ripplePreviewSignatureRef = useRef("");
+  const lastDragOverKeyRef = useRef("");
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<TimelineDragPreview | null>(null);
   const [ripplePreviewClips, setRipplePreviewClips] = useState<
     ClipTrackClip[] | null
   >(null);
+  const sortedClips = useMemo(() => sortClipsByStart(clips), [clips]);
 
   const timeFromClientX = useCallback(
     (clientX: number) => {
@@ -140,6 +156,7 @@ export function useTimelineDragAndDrop({
   const clearDragState = useCallback(() => {
     dragPreviewSignatureRef.current = "";
     ripplePreviewSignatureRef.current = "";
+    lastDragOverKeyRef.current = "";
     setDragPreview(null);
     setRipplePreviewClips(null);
   }, []);
@@ -237,6 +254,11 @@ export function useTimelineDragAndDrop({
       event.dataTransfer.getData(TRACK_CLIP_MIME) || draggingClipId;
 
     if (movingClipId) {
+      const moveKey = `move:${movingClipId}:${dropSeconds.toFixed(4)}`;
+      if (lastDragOverKeyRef.current === moveKey) {
+        return;
+      }
+      lastDragOverKeyRef.current = moveKey;
       const movingClip = clips.find((clip) => clip.id === movingClipId);
       if (!movingClip) {
         clearDragState();
@@ -244,8 +266,8 @@ export function useTimelineDragAndDrop({
       }
 
       const targetStart = Math.max(0, dropSeconds - dragOffsetSecondsRef.current);
-      const baseClips = clips.filter((clip) => clip.id !== movingClipId);
-      const layout = buildRippleLayout(baseClips, {
+      const baseSortedClips = sortedClips.filter((clip) => clip.id !== movingClipId);
+      const layout = buildRippleLayoutFromSorted(baseSortedClips, {
         ...movingClip,
         startSeconds: targetStart,
       });
@@ -282,6 +304,11 @@ export function useTimelineDragAndDrop({
       }
 
       const durationSeconds = clamp(assetFromData.durationSeconds || 1, 1, 600);
+      const insertKey = `insert:${assetFromData.id}:${durationSeconds.toFixed(4)}:${dropSeconds.toFixed(4)}`;
+      if (lastDragOverKeyRef.current === insertKey) {
+        return;
+      }
+      lastDragOverKeyRef.current = insertKey;
       const previewInsert: ClipTrackClip = {
         id: PREVIEW_INSERT_ID,
         assetId: assetFromData.id,
@@ -296,7 +323,7 @@ export function useTimelineDragAndDrop({
         frameThumbnails: assetFromData.frameThumbnails || [],
         audioLevels: assetFromData.audioLevels || [],
       };
-      const layout = buildRippleLayout(clips, previewInsert);
+      const layout = buildRippleLayoutFromSorted(sortedClips, previewInsert);
       const insertedPreview =
         layout.find((clip) => clip.id === PREVIEW_INSERT_ID) || null;
       if (!insertedPreview) {

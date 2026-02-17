@@ -64,20 +64,32 @@ export function useTimelineClipEditing({
       0,
       clip.mediaDurationSeconds - clip.sourceEndSeconds
     );
+    const rightNeighborStart = clips
+      .filter((item) => item.id !== clip.id && item.startSeconds > clip.startSeconds)
+      .sort((a, b) => a.startSeconds - b.startSeconds)[0]?.startSeconds;
+    const maxDurationByNeighbor = rightNeighborStart
+      ? Math.max(
+          MIN_CLIP_DURATION_SECONDS,
+          rightNeighborStart - clip.startSeconds
+        )
+      : Number.POSITIVE_INFINITY;
     setResizingClipId(clip.id);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaSeconds = (moveEvent.clientX - originClientX) / pixelsPerSecond;
-      const nextDuration = clamp(
-        originDuration + deltaSeconds,
-        MIN_CLIP_DURATION_SECONDS,
-        originDuration + maxExtendRight
-      );
-      const nextSourceEnd = originSourceEnd + (nextDuration - originDuration);
-
       let resizedForPreview: ClipTrackClip | null = null;
-      setClips((prev) =>
-        prev.map((item) => {
+      setClips((prev) => {
+        const maxDurationByMedia = originDuration + maxExtendRight;
+        const maxDuration = Math.min(maxDurationByMedia, maxDurationByNeighbor);
+        const safeMinDuration = Math.min(MIN_CLIP_DURATION_SECONDS, maxDuration);
+        const nextDuration = clamp(
+          originDuration + deltaSeconds,
+          safeMinDuration,
+          maxDuration
+        );
+        const nextSourceEnd = originSourceEnd + (nextDuration - originDuration);
+
+        return prev.map((item) => {
           if (item.id !== clip.id) {
             return item;
           }
@@ -88,8 +100,8 @@ export function useTimelineClipEditing({
           };
           resizedForPreview = updated;
           return updated;
-        })
-      );
+        });
+      });
 
       if (resizedForPreview && selectedClipId === clip.id) {
         onPreviewClip?.(resizedForPreview);
@@ -119,22 +131,40 @@ export function useTimelineClipEditing({
     const originDuration = clip.durationSeconds;
     const originSourceStart = clip.sourceStartSeconds;
     const maxExtendLeft = Math.min(originSourceStart, originStart);
+    const leftNeighbor = clips
+      .filter((item) => item.id !== clip.id && item.startSeconds < originStart)
+      .sort(
+        (a, b) =>
+          b.startSeconds + b.durationSeconds - (a.startSeconds + a.durationSeconds)
+      )[0];
+    const leftNeighborEnd = leftNeighbor
+      ? leftNeighbor.startSeconds + leftNeighbor.durationSeconds
+      : 0;
+
+    const minTrimFromLeftBySource = -maxExtendLeft;
+    const minTrimFromLeftByNeighbor = leftNeighborEnd - originStart;
+    const minTrimFromLeft = Math.max(
+      minTrimFromLeftBySource,
+      minTrimFromLeftByNeighbor
+    );
+    const maxTrimFromLeft = originDuration - MIN_CLIP_DURATION_SECONDS;
+    const safeMinTrim = Math.min(minTrimFromLeft, maxTrimFromLeft);
     setResizingClipId(clip.id);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaSeconds = (moveEvent.clientX - originClientX) / pixelsPerSecond;
-      const trimFromLeft = clamp(
-        deltaSeconds,
-        -maxExtendLeft,
-        originDuration - MIN_CLIP_DURATION_SECONDS
-      );
-      const nextStart = originStart + trimFromLeft;
-      const nextSourceStart = originSourceStart + trimFromLeft;
-      const nextDuration = originDuration - trimFromLeft;
-
       let resizedForPreview: ClipTrackClip | null = null;
-      setClips((prev) =>
-        prev.map((item) => {
+      setClips((prev) => {
+        const trimFromLeft = clamp(
+          deltaSeconds,
+          safeMinTrim,
+          maxTrimFromLeft
+        );
+        const nextStart = originStart + trimFromLeft;
+        const nextSourceStart = originSourceStart + trimFromLeft;
+        const nextDuration = originDuration - trimFromLeft;
+
+        return prev.map((item) => {
           if (item.id !== clip.id) {
             return item;
           }
@@ -146,8 +176,8 @@ export function useTimelineClipEditing({
           };
           resizedForPreview = updated;
           return updated;
-        })
-      );
+        });
+      });
 
       if (resizedForPreview && selectedClipId === clip.id) {
         onPreviewClip?.(resizedForPreview);

@@ -35,18 +35,14 @@ export function ClipTimelineTrackView() {
     (state) => state.audioTimelineClips
   );
   const timelinePlaying = useClipEditorStore((state) => state.timelinePlaying);
-  const setDraggingAsset = useClipEditorStore(
-    (state) => state.setDraggingAsset
-  );
+  const setDraggingAsset = useClipEditorStore((state) => state.setDraggingAsset);
   const setTimelinePlaying = useClipEditorStore(
     (state) => state.setTimelinePlaying
   );
   const setTrackTotalDurationSeconds = useClipEditorStore(
     (state) => state.setTrackTotalDurationSeconds
   );
-  const setTimelineClips = useClipEditorStore(
-    (state) => state.setTimelineClips
-  );
+  const setTimelineClips = useClipEditorStore((state) => state.setTimelineClips);
   const setAudioTimelineClips = useClipEditorStore(
     (state) => state.setAudioTimelineClips
   );
@@ -56,12 +52,8 @@ export function ClipTimelineTrackView() {
   const previewTimelineClip = useClipEditorStore(
     (state) => state.previewTimelineClip
   );
-  const previewEmptyFrame = useClipEditorStore(
-    (state) => state.previewEmptyFrame
-  );
-  const syncTimelineFrame = useClipEditorStore(
-    (state) => state.syncTimelineFrame
-  );
+  const previewEmptyFrame = useClipEditorStore((state) => state.previewEmptyFrame);
+  const syncTimelineFrame = useClipEditorStore((state) => state.syncTimelineFrame);
 
   const playback = useTimelinePlayback({
     clips: timelineClips,
@@ -182,6 +174,8 @@ export function ClipTimelineTrackView() {
     currentTimeSeconds,
     currentTimeX,
     pixelsPerSecond,
+    scrollLeft,
+    trackViewportWidth,
     minZoom,
     maxZoom,
     timelineWidthPx,
@@ -276,6 +270,8 @@ export function ClipTimelineTrackView() {
                   timelineWidthPx={timelineWidthPx}
                   majorGridWidth={majorGridWidth}
                   minorGridWidth={minorGridWidth}
+                  viewportStartPx={scrollLeft}
+                  viewportWidthPx={trackViewportWidth}
                   onTrackClick={handleTrackClick}
                   onTrackDragOver={videoDragAndDrop.handleTrackDragOver}
                   onTrackDragLeave={videoDragAndDrop.handleTrackDragLeave}
@@ -304,6 +300,8 @@ export function ClipTimelineTrackView() {
                   timelineWidthPx={timelineWidthPx}
                   majorGridWidth={majorGridWidth}
                   minorGridWidth={minorGridWidth}
+                  viewportStartPx={scrollLeft}
+                  viewportWidthPx={trackViewportWidth}
                   onTrackClick={handleTrackClick}
                   onTrackDragOver={audioDragAndDrop.handleTrackDragOver}
                   onTrackDragLeave={audioDragAndDrop.handleTrackDragLeave}
