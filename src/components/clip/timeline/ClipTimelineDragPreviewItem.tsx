@@ -1,6 +1,7 @@
-import { MIN_CLIP_WIDTH } from "./clipTimelineConfig";
 import { formatTime } from "./clipTimelineUtils";
 import type { TimelineDragPreview } from "./ClipTimelineTrackView";
+
+const MIN_RENDER_WIDTH_PX = 1;
 
 type ClipTimelineDragPreviewItemProps = {
   dragPreview: TimelineDragPreview;
@@ -16,7 +17,7 @@ export function ClipTimelineDragPreviewItem({
   const x = dragPreview.startSeconds * pixelsPerSecond;
   const width = Math.max(
     dragPreview.durationSeconds * pixelsPerSecond,
-    MIN_CLIP_WIDTH
+    MIN_RENDER_WIDTH_PX
   );
   return (
     <article

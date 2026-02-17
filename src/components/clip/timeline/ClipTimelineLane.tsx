@@ -99,7 +99,7 @@ export const ClipTimelineLane = memo(function ClipTimelineLane({
 
     return clips.filter((clip) => {
       const clipStartX = clip.startSeconds * pixelsPerSecond;
-      const clipEndX = clipStartX + Math.max(clip.durationSeconds * pixelsPerSecond, MIN_CLIP_WIDTH);
+      const clipEndX = clipStartX + Math.max(clip.durationSeconds * pixelsPerSecond, 1);
       return clipEndX >= minX && clipStartX <= maxX;
     });
   }, [clips, pixelsPerSecond, viewportStartPx, viewportWidthPx]);

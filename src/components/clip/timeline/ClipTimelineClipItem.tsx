@@ -4,12 +4,13 @@ import {
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { MIN_CLIP_WIDTH, TRACK_COLORS } from "./clipTimelineConfig";
+import { TRACK_COLORS } from "./clipTimelineConfig";
 import { formatTime } from "./clipTimelineUtils";
 import type { ClipTrackClip } from "../shared/types";
 
 const TIMELINE_FRAME_TILE_WIDTH = 32;
 const AUDIO_BAR_WIDTH = 3;
+const MIN_RENDER_WIDTH_PX = 1;
 
 type ClipTimelineClipItemProps = {
   clip: ClipTrackClip;
@@ -50,7 +51,7 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
   onClipResizeStart,
 }: ClipTimelineClipItemProps) {
   const clipWidth = useMemo(
-    () => Math.max(clip.durationSeconds * pixelsPerSecond, MIN_CLIP_WIDTH),
+    () => Math.max(clip.durationSeconds * pixelsPerSecond, MIN_RENDER_WIDTH_PX),
     [clip.durationSeconds, pixelsPerSecond]
   );
   const clipX = useMemo(
