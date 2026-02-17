@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ClipPreviewSource } from "./types";
+import type { ClipPreviewSource } from "../shared/types";
 
 const DRIFT_SYNC_THRESHOLD_PLAYING = 0.35;
 const DRIFT_SYNC_THRESHOLD_PAUSED = 0.04;

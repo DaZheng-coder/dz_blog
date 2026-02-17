@@ -1,5 +1,5 @@
-import { MEDIA_ASSET_MIME } from "./dnd";
-import type { ClipDragAsset, ClipTrackClip } from "./types";
+import { MEDIA_ASSET_MIME } from "../shared/dnd";
+import type { ClipDragAsset, ClipTrackClip } from "../shared/types";
 
 export function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);

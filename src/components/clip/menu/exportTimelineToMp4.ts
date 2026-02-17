@@ -1,6 +1,6 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
-import type { ClipTrackClip } from "./types";
+import type { ClipTrackClip } from "../shared/types";
 
 const WIDTH = 1280;
 const HEIGHT = 720;

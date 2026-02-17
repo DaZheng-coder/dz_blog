@@ -1,7 +1,7 @@
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from "react";
 import { MIN_CLIP_WIDTH, TRACK_COLORS } from "./clipTimelineConfig";
 import { formatTime } from "./clipTimelineUtils";
-import type { ClipTrackClip } from "./types";
+import type { ClipTrackClip } from "../shared/types";
 
 const TIMELINE_FRAME_TILE_WIDTH = 32;
 const AUDIO_BAR_WIDTH = 3;

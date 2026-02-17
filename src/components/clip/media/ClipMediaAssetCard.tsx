@@ -1,6 +1,6 @@
 import type { DragEvent as ReactDragEvent } from "react";
-import { formatDuration } from "./time";
-import type { ClipMediaAsset } from "./types";
+import { formatDuration } from "../shared/time";
+import type { ClipMediaAsset } from "../shared/types";
 
 type ClipMediaAssetCardProps = {
   asset: ClipMediaAsset;

@@ -9,12 +9,12 @@ import {
 } from "react";
 import { ClipMediaAssetCard } from "./ClipMediaAssetCard";
 import { ClipMediaEmptyState } from "./ClipMediaEmptyState";
-import { ClipPanelFrame } from "./ClipPanelFrame";
-import { useClipEditorStore } from "./clipEditorStore";
+import { ClipPanelFrame } from "../shared/ClipPanelFrame";
+import { useClipEditorStore } from "../store/clipEditorStore";
 import { createCardDragGhost, createTrackBlockGhost } from "./dragGhost";
-import { MEDIA_ASSET_MIME } from "./dnd";
-import { subtleButtonClass } from "./styles";
-import type { ClipDragAsset, ClipMediaAsset } from "./types";
+import { MEDIA_ASSET_MIME } from "../shared/dnd";
+import { subtleButtonClass } from "../shared/styles";
+import type { ClipDragAsset, ClipMediaAsset } from "../shared/types";
 import { createAudioAsset, createVideoAsset } from "./videoAsset";
 
 export function ClipMediaPanel() {

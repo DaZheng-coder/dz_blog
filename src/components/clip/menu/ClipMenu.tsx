@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useClipEditorStore } from "./clipEditorStore";
+import { useClipEditorStore } from "../store/clipEditorStore";
 import { ClipExportProgressModal } from "./ClipExportProgressModal";
 import { ClipMenuBrand } from "./ClipMenuBrand";
-import { menuItems } from "./data";
+import { menuItems } from "../shared/data";
 import { exportTimelineToMp4 } from "./exportTimelineToMp4";
-import { subtleButtonClass } from "./styles";
+import { subtleButtonClass } from "../shared/styles";
 
 export function ClipMenu() {
   const [isExporting, setIsExporting] = useState(false);

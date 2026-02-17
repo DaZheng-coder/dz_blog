@@ -1,4 +1,4 @@
-import type { ClipMediaAsset } from "./types";
+import type { ClipMediaAsset } from "../shared/types";
 
 const MIN_VIDEO_THUMBNAILS = 6;
 const MAX_VIDEO_THUMBNAILS = 60;

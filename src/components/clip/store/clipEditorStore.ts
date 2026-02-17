@@ -1,5 +1,9 @@
 import { create } from "zustand";
-import type { ClipDragAsset, ClipPreviewSource, ClipTrackClip } from "./types";
+import type {
+  ClipDragAsset,
+  ClipPreviewSource,
+  ClipTrackClip,
+} from "../shared/types";
 
 type TimelineFramePayload = {
   timeSeconds: number;

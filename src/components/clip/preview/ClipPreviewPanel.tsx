@@ -1,6 +1,6 @@
-import { ClipPanelFrame } from "./ClipPanelFrame";
-import { useClipEditorStore } from "./clipEditorStore";
-import { formatDuration } from "./time";
+import { ClipPanelFrame } from "../shared/ClipPanelFrame";
+import { useClipEditorStore } from "../store/clipEditorStore";
+import { formatDuration } from "../shared/time";
 import { useClipPreviewController } from "./useClipPreviewController";
 
 const SEEK_STEP_SECONDS = 2;

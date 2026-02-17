@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type SetStateAction,
 } from "react";
 import {
   DEFAULT_ZOOM,
@@ -21,7 +22,7 @@ import {
   clamp,
   findActiveClipAtTime,
 } from "./clipTimelineUtils";
-import type { ClipTrackClip } from "./types";
+import type { ClipTrackClip } from "../shared/types";
 
 type UseTimelinePlaybackOptions = {
   clips: ClipTrackClip[];
@@ -63,7 +64,7 @@ export function useTimelinePlayback({
     timeSeconds: -1,
   });
 
-  const [pixelsPerSecond, setPixelsPerSecond] = useState(DEFAULT_ZOOM);
+  const [pixelsPerSecondState, setPixelsPerSecondState] = useState(DEFAULT_ZOOM);
   const [internalPlaying, setInternalPlaying] = useState(false);
   const [currentTimeSeconds, setCurrentTimeSeconds] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -98,20 +99,16 @@ export function useTimelinePlayback({
   }, [maxClipEndSeconds, onTrackDurationChange]);
 
   const trackDurationSeconds = useMemo(() => {
+    const zoomBasis = Math.max(1, pixelsPerSecondState);
     const trailingPaddingSeconds =
-      trackViewportWidth > 0 ? trackViewportWidth / pixelsPerSecond / 3 : 0;
+      trackViewportWidth > 0 ? trackViewportWidth / zoomBasis / 3 : 0;
     if (maxClipEndSeconds > 0) {
       return Math.max(1, maxClipEndSeconds + trailingPaddingSeconds);
     }
     const viewportDuration =
-      trackViewportWidth > 0 ? trackViewportWidth / pixelsPerSecond : 60;
+      trackViewportWidth > 0 ? trackViewportWidth / zoomBasis : 60;
     return Math.max(1, viewportDuration);
-  }, [maxClipEndSeconds, pixelsPerSecond, trackViewportWidth]);
-
-  const timelineWidthPx = useMemo(() => {
-    const byContent = trackDurationSeconds * pixelsPerSecond;
-    return Math.max(trackViewportWidth, byContent);
-  }, [pixelsPerSecond, trackDurationSeconds, trackViewportWidth]);
+  }, [maxClipEndSeconds, pixelsPerSecondState, trackViewportWidth]);
 
   const zoomBounds = useMemo(() => {
     const safeDuration = Math.max(1, trackDurationSeconds);
@@ -124,10 +121,32 @@ export function useTimelinePlayback({
       maxZoom: Math.max(dynamicMin + 1, dynamicMax),
     };
   }, [trackDurationSeconds, trackViewportWidth]);
+  const pixelsPerSecond = useMemo(
+    () =>
+      clamp(
+        pixelsPerSecondState,
+        zoomBounds.minZoom,
+        zoomBounds.maxZoom
+      ),
+    [pixelsPerSecondState, zoomBounds.maxZoom, zoomBounds.minZoom]
+  );
 
-  useEffect(() => {
-    setPixelsPerSecond((prev) => clamp(prev, zoomBounds.minZoom, zoomBounds.maxZoom));
-  }, [zoomBounds.maxZoom, zoomBounds.minZoom]);
+  const setPixelsPerSecond = useCallback(
+    (next: SetStateAction<number>) => {
+      setPixelsPerSecondState((prevRaw) => {
+        const prev = clamp(prevRaw, zoomBounds.minZoom, zoomBounds.maxZoom);
+        const resolved =
+          typeof next === "function" ? next(prev) : next;
+        return clamp(resolved, zoomBounds.minZoom, zoomBounds.maxZoom);
+      });
+    },
+    [zoomBounds.maxZoom, zoomBounds.minZoom]
+  );
+
+  const timelineWidthPx = useMemo(() => {
+    const byContent = trackDurationSeconds * pixelsPerSecond;
+    return Math.max(trackViewportWidth, byContent);
+  }, [pixelsPerSecond, trackDurationSeconds, trackViewportWidth]);
 
   const rulerMarks = useMemo(
     () => buildRulerMarks(trackDurationSeconds, RULER_STEP_SECONDS),

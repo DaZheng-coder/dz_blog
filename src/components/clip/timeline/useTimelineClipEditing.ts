@@ -5,7 +5,7 @@ import {
   type RefObject,
 } from "react";
 import { clamp, findActiveClipAtTime } from "./clipTimelineUtils";
-import type { ClipTrackClip } from "./types";
+import type { ClipTrackClip } from "../shared/types";
 
 const MIN_CLIP_DURATION_SECONDS = 0.2;
 
@@ -240,6 +240,7 @@ export function useTimelineClipEditing({
     isPlaying,
     onPreviewClip,
     selectedClipId,
+    selectedClipIds,
     setClips,
   ]);
 

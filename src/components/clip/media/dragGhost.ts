@@ -1,5 +1,5 @@
-import { formatDuration } from "./time";
-import type { ClipDragAsset } from "./types";
+import { formatDuration } from "../shared/time";
+import type { ClipDragAsset } from "../shared/types";
 
 export function createCardDragGhost(asset: ClipDragAsset) {
   const ghost = document.createElement("div");

@@ -1,13 +1,13 @@
-import { ClipPanelFrame } from "./ClipPanelFrame";
+import { ClipPanelFrame } from "../shared/ClipPanelFrame";
 import {
   colorAdjustments,
   inspectorAnimations,
   inspectorMetrics,
-} from "./data";
+} from "../shared/data";
 import {
   inspectorActionActiveButtonClass,
   inspectorActionButtonClass,
-} from "./styles";
+} from "../shared/styles";
 
 export function ClipInspectorPanel() {
   return (
