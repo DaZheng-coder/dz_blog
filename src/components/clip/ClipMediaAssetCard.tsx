@@ -1,10 +1,10 @@
 import type { DragEvent as ReactDragEvent } from "react";
 import { formatDuration } from "./time";
-import type { ClipVideoAsset } from "./types";
+import type { ClipMediaAsset } from "./types";
 
 type ClipMediaAssetCardProps = {
-  asset: ClipVideoAsset;
-  onDragStart: (event: ReactDragEvent<HTMLElement>, asset: ClipVideoAsset) => void;
+  asset: ClipMediaAsset;
+  onDragStart: (event: ReactDragEvent<HTMLElement>, asset: ClipMediaAsset) => void;
   onDragEnd: () => void;
 };
 
@@ -35,7 +35,10 @@ export function ClipMediaAssetCard({
         )}
       </div>
       <p className="mt-1.5 truncate text-xs text-white">{asset.title}</p>
-      <p className="text-[11px] text-[#9ca3af]">时长 {formatDuration(asset.durationSeconds)}</p>
+      <p className="text-[11px] text-[#9ca3af]">
+        {asset.mediaType === "audio" ? "音频" : "视频"} · 时长{" "}
+        {formatDuration(asset.durationSeconds)}
+      </p>
     </article>
   );
 }

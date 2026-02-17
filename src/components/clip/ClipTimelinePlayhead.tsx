@@ -3,20 +3,27 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 type ClipTimelinePlayheadProps = {
   currentTimeX: number;
   isScrubbing: boolean;
+  startOffsetPx?: number;
+  disablePointerEvents?: boolean;
   onPlayheadMouseDown: (event: ReactMouseEvent<HTMLDivElement>) => void;
 };
 
 export function ClipTimelinePlayhead({
   currentTimeX,
   isScrubbing,
+  startOffsetPx = 0,
+  disablePointerEvents = false,
   onPlayheadMouseDown,
 }: ClipTimelinePlayheadProps) {
+  const clampedTimeX = Math.max(0, currentTimeX);
   return (
     <div
       className={`absolute bottom-0 top-0 z-30 -translate-x-1/2 ${
+        disablePointerEvents ? "pointer-events-none" : ""
+      } ${
         isScrubbing ? "cursor-grabbing" : "cursor-grab"
       }`}
-      style={{ left: `${currentTimeX}px` }}
+      style={{ left: `${clampedTimeX + startOffsetPx}px` }}
       onMouseDown={onPlayheadMouseDown}
     >
       <div className="pointer-events-none absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-[#67e8f9]" />

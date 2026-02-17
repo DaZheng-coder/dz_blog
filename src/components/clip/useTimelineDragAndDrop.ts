@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, type DragEvent, type RefObject } from "r
 import { clamp, readDragAssetFromDataTransfer } from "./clipTimelineUtils";
 import { TRACK_CLIP_MIME } from "./dnd";
 import type { TimelineDragPreview } from "./ClipTimelineTrackView";
-import type { ClipDragAsset, ClipTrackClip } from "./types";
+import type { ClipDragAsset, ClipMediaType, ClipTrackClip } from "./types";
 
 const PREVIEW_INSERT_ID = "__preview_insert_clip__";
 
@@ -53,10 +53,14 @@ type UseTimelineDragAndDropOptions = {
   draggingAsset: ClipDragAsset | null;
   pixelsPerSecond: number;
   laneRef: RefObject<HTMLDivElement | null>;
-  scrollRef: RefObject<HTMLDivElement | null>;
   selectedClipId?: string | null;
   onPreviewClip?: (clip: ClipTrackClip) => void;
   onAssetDropComplete?: () => void;
+  acceptedMediaType?: ClipMediaType;
+  onAssetClipCreated?: (payload: {
+    createdClip: ClipTrackClip;
+    asset: ClipDragAsset;
+  }) => void;
 };
 
 export function useTimelineDragAndDrop({
@@ -65,10 +69,11 @@ export function useTimelineDragAndDrop({
   draggingAsset,
   pixelsPerSecond,
   laneRef,
-  scrollRef,
   selectedClipId,
   onPreviewClip,
   onAssetDropComplete,
+  acceptedMediaType,
+  onAssetClipCreated,
 }: UseTimelineDragAndDropOptions) {
   const dragOffsetSecondsRef = useRef(0);
   const dragPreviewSignatureRef = useRef("");
@@ -86,11 +91,10 @@ export function useTimelineDragAndDrop({
         return 0;
       }
       const rect = lane.getBoundingClientRect();
-      const scrollLeft = scrollRef.current?.scrollLeft || 0;
-      const x = clientX - rect.left + scrollLeft;
+      const x = clientX - rect.left;
       return Math.max(0, x / pixelsPerSecond);
     },
-    [laneRef, pixelsPerSecond, scrollRef]
+    [laneRef, pixelsPerSecond]
   );
 
   const quantizeTimeToPixel = useCallback(
@@ -185,6 +189,10 @@ export function useTimelineDragAndDrop({
       if (!assetFromData) {
         return;
       }
+      if (acceptedMediaType && assetFromData.mediaType !== acceptedMediaType) {
+        clearDragState();
+        return;
+      }
 
       const durationSeconds = clamp(assetFromData.durationSeconds || 1, 1, 600);
       let createdClipForPreview: ClipTrackClip | null = null;
@@ -193,11 +201,15 @@ export function useTimelineDragAndDrop({
           id: crypto.randomUUID(),
           assetId: assetFromData.id,
           title: assetFromData.title,
+          mediaType: assetFromData.mediaType,
+          mediaDurationSeconds: durationSeconds,
           durationSeconds,
           startSeconds: dropSeconds,
           sourceStartSeconds: 0,
           sourceEndSeconds: durationSeconds,
           objectUrl: assetFromData.objectUrl,
+          frameThumbnails: assetFromData.frameThumbnails || [],
+          audioLevels: assetFromData.audioLevels || [],
         };
         const layout = buildRippleLayout(prev, createdClip);
         createdClipForPreview = layout.find((clip) => clip.id === createdClip.id) || null;
@@ -205,6 +217,10 @@ export function useTimelineDragAndDrop({
       });
       if (createdClipForPreview) {
         onPreviewClip?.(createdClipForPreview);
+        onAssetClipCreated?.({
+          createdClip: createdClipForPreview,
+          asset: assetFromData,
+        });
       }
       clearDragState();
       onAssetDropComplete?.();
@@ -260,17 +276,25 @@ export function useTimelineDragAndDrop({
         clearDragState();
         return;
       }
+      if (acceptedMediaType && assetFromData.mediaType !== acceptedMediaType) {
+        clearDragState();
+        return;
+      }
 
       const durationSeconds = clamp(assetFromData.durationSeconds || 1, 1, 600);
       const previewInsert: ClipTrackClip = {
         id: PREVIEW_INSERT_ID,
         assetId: assetFromData.id,
         title: assetFromData.title,
+        mediaType: assetFromData.mediaType,
+        mediaDurationSeconds: durationSeconds,
         durationSeconds,
         startSeconds: dropSeconds,
         sourceStartSeconds: 0,
         sourceEndSeconds: durationSeconds,
         objectUrl: assetFromData.objectUrl,
+        frameThumbnails: assetFromData.frameThumbnails || [],
+        audioLevels: assetFromData.audioLevels || [],
       };
       const layout = buildRippleLayout(clips, previewInsert);
       const insertedPreview =

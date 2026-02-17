@@ -67,6 +67,8 @@ export function useClipPreviewController({
     if (!video || !segment) {
       return;
     }
+    video.muted = true;
+    video.volume = 0;
 
     const handleLoadedMetadata = () => {
       video.currentTime = segment.start;
@@ -155,6 +157,9 @@ export function useClipPreviewController({
     if (!video || !segment) {
       return;
     }
+    // Keep preview video silent; timeline audio is driven by audio track playback.
+    video.muted = true;
+    video.volume = 0;
 
     const sourceKey = `${previewSource.objectUrl}-${segment.start}-${segment.end}-${previewSource.timelineStartSeconds || 0}`;
     const sourceChanged = timelineSourceKeyRef.current !== sourceKey;

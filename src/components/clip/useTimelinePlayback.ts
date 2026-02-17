@@ -9,6 +9,8 @@ import {
 import {
   DEFAULT_ZOOM,
   FRAME_EMIT_INTERVAL_SECONDS,
+  MAX_ZOOM,
+  MIN_ZOOM,
   PLAYHEAD_PADDING,
   RULER_MINOR_STEP_SECONDS,
   RULER_STEP_SECONDS,
@@ -48,6 +50,8 @@ export function useTimelinePlayback({
   const laneRef = useRef<HTMLDivElement>(null);
   const trackViewportRef = useRef<HTMLDivElement>(null);
   const playStartRef = useRef<{ timestamp: number; base: number } | null>(null);
+  const playheadDragOffsetPxRef = useRef(0);
+  const scrubbingFromPlayheadRef = useRef(false);
   const currentTimeRef = useRef(0);
   const lastFrameRef = useRef<{
     clipId: string | null;
@@ -94,10 +98,36 @@ export function useTimelinePlayback({
   }, [maxClipEndSeconds, onTrackDurationChange]);
 
   const trackDurationSeconds = useMemo(() => {
+    const trailingPaddingSeconds =
+      trackViewportWidth > 0 ? trackViewportWidth / pixelsPerSecond / 3 : 0;
+    if (maxClipEndSeconds > 0) {
+      return Math.max(1, maxClipEndSeconds + trailingPaddingSeconds);
+    }
     const viewportDuration =
       trackViewportWidth > 0 ? trackViewportWidth / pixelsPerSecond : 60;
-    return Math.max(1, viewportDuration, maxClipEndSeconds);
+    return Math.max(1, viewportDuration);
   }, [maxClipEndSeconds, pixelsPerSecond, trackViewportWidth]);
+
+  const timelineWidthPx = useMemo(() => {
+    const byContent = trackDurationSeconds * pixelsPerSecond;
+    return Math.max(trackViewportWidth, byContent);
+  }, [pixelsPerSecond, trackDurationSeconds, trackViewportWidth]);
+
+  const zoomBounds = useMemo(() => {
+    const safeDuration = Math.max(1, trackDurationSeconds);
+    const fitZoom =
+      trackViewportWidth > 0 ? trackViewportWidth / safeDuration : DEFAULT_ZOOM;
+    const dynamicMin = clamp(Math.round(fitZoom * 0.5), MIN_ZOOM, DEFAULT_ZOOM);
+    const dynamicMax = clamp(Math.round(fitZoom * 8), DEFAULT_ZOOM, MAX_ZOOM * 4);
+    return {
+      minZoom: dynamicMin,
+      maxZoom: Math.max(dynamicMin + 1, dynamicMax),
+    };
+  }, [trackDurationSeconds, trackViewportWidth]);
+
+  useEffect(() => {
+    setPixelsPerSecond((prev) => clamp(prev, zoomBounds.minZoom, zoomBounds.maxZoom));
+  }, [zoomBounds.maxZoom, zoomBounds.minZoom]);
 
   const rulerMarks = useMemo(
     () => buildRulerMarks(trackDurationSeconds, RULER_STEP_SECONDS),
@@ -176,8 +206,7 @@ export function useTimelinePlayback({
         return 0;
       }
       const rect = lane.getBoundingClientRect();
-      const scrollLeft = scrollRef.current?.scrollLeft || 0;
-      const x = clientX - rect.left + scrollLeft;
+      const x = clientX - rect.left;
       return clamp(x / pixelsPerSecond, 0, trackDurationSeconds);
     },
     [pixelsPerSecond, trackDurationSeconds]
@@ -233,11 +262,42 @@ export function useTimelinePlayback({
     emitTimelineFrame(nextTime, isPlaying, true);
   };
 
+  const handleSeekMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    scrubbingFromPlayheadRef.current = false;
+    playheadDragOffsetPxRef.current = 0;
+    setIsScrubbing(true);
+    const nextTime = seekFromClientX(event.clientX);
+    const activeClip = findActiveClipAt(nextTime);
+    if (activeClip) {
+      onPreviewClip?.(activeClip);
+    } else {
+      onPreviewEmptyFrame?.(nextTime);
+    }
+    emitTimelineFrame(nextTime, isPlaying, true);
+  };
+
   const handlePlayheadMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
+    const lane = laneRef.current;
+    const scrollLeft = scrollRef.current?.scrollLeft || 0;
+    if (lane) {
+      const rect = lane.getBoundingClientRect();
+      const playheadClientX =
+        rect.left - scrollLeft + currentTimeRef.current * pixelsPerSecond;
+      playheadDragOffsetPxRef.current = event.clientX - playheadClientX;
+    } else {
+      playheadDragOffsetPxRef.current = 0;
+    }
+    scrubbingFromPlayheadRef.current = true;
     setIsScrubbing(true);
-    const nextTime = seekFromClientX(event.clientX);
+    const nextTime = seekFromClientX(
+      event.clientX - playheadDragOffsetPxRef.current
+    );
     emitTimelineFrame(nextTime, isPlaying, true);
   };
 
@@ -247,11 +307,23 @@ export function useTimelinePlayback({
     }
 
     const handleMouseMove = (event: MouseEvent) => {
-      seekFromClientX(event.clientX);
+      const clientX = scrubbingFromPlayheadRef.current
+        ? event.clientX - playheadDragOffsetPxRef.current
+        : event.clientX;
+      const nextTime = seekFromClientX(clientX);
+      const activeClip = findActiveClipAt(nextTime);
+      if (activeClip) {
+        onPreviewClip?.(activeClip);
+      } else {
+        onPreviewEmptyFrame?.(nextTime);
+      }
+      emitTimelineFrame(nextTime, isPlaying, true);
     };
 
     const handleMouseUp = () => {
       setIsScrubbing(false);
+      scrubbingFromPlayheadRef.current = false;
+      playheadDragOffsetPxRef.current = 0;
     };
 
     window.addEventListener("mousemove", handleMouseMove);
@@ -260,7 +332,15 @@ export function useTimelinePlayback({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isScrubbing, seekFromClientX]);
+  }, [
+    emitTimelineFrame,
+    findActiveClipAt,
+    isPlaying,
+    isScrubbing,
+    onPreviewClip,
+    onPreviewEmptyFrame,
+    seekFromClientX,
+  ]);
 
   useEffect(() => {
     if (!isScrubbing) {
@@ -338,11 +418,15 @@ export function useTimelinePlayback({
     pixelsPerSecond,
     majorGridWidth,
     minorGridWidth,
+    timelineWidthPx,
+    minZoom: zoomBounds.minZoom,
+    maxZoom: zoomBounds.maxZoom,
     rulerMarks,
     rulerTickMarks,
     isScrubbing,
     setPixelsPerSecond,
     handleSeekClick,
+    handleSeekMouseDown,
     handlePlayheadMouseDown,
   };
 }

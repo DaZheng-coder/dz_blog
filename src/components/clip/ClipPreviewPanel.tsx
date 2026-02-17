@@ -68,6 +68,7 @@ export function ClipPreviewPanel() {
                       src={timelineSource?.objectUrl}
                       className="h-full w-full object-contain"
                       playsInline
+                      muted
                     />
                   )}
                 </>

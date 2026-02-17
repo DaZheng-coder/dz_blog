@@ -1,11 +1,10 @@
 import {
   useCallback,
-  useEffect,
   useState,
   type MouseEvent as ReactMouseEvent,
   type RefObject,
 } from "react";
-import { clamp, findActiveClipAtTime, isEditableElement } from "./clipTimelineUtils";
+import { clamp, findActiveClipAtTime } from "./clipTimelineUtils";
 import type { ClipTrackClip } from "./types";
 
 const MIN_CLIP_DURATION_SECONDS = 0.2;
@@ -19,6 +18,7 @@ type UseTimelineClipEditingOptions = {
   ) => void;
   pixelsPerSecond: number;
   selectedClipId?: string | null;
+  selectedClipIds?: string[];
   draggingClipId: string | null;
   clearDragState: () => void;
   isPlaying: boolean;
@@ -30,6 +30,7 @@ type UseTimelineClipEditingOptions = {
     playingFrame: boolean,
     force?: boolean
   ) => void;
+  clearSelection?: () => void;
 };
 
 export function useTimelineClipEditing({
@@ -37,6 +38,7 @@ export function useTimelineClipEditing({
   setClips,
   pixelsPerSecond,
   selectedClipId,
+  selectedClipIds = [],
   draggingClipId,
   clearDragState,
   isPlaying,
@@ -44,6 +46,7 @@ export function useTimelineClipEditing({
   onPreviewClip,
   onPreviewEmptyFrame,
   emitTimelineFrame,
+  clearSelection,
 }: UseTimelineClipEditingOptions) {
   const [resizingClipId, setResizingClipId] = useState<string | null>(null);
 
@@ -57,6 +60,10 @@ export function useTimelineClipEditing({
     const originClientX = event.clientX;
     const originDuration = clip.durationSeconds;
     const originSourceEnd = clip.sourceEndSeconds;
+    const maxExtendRight = Math.max(
+      0,
+      clip.mediaDurationSeconds - clip.sourceEndSeconds
+    );
     setResizingClipId(clip.id);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -64,9 +71,9 @@ export function useTimelineClipEditing({
       const nextDuration = clamp(
         originDuration + deltaSeconds,
         MIN_CLIP_DURATION_SECONDS,
-        originDuration
+        originDuration + maxExtendRight
       );
-      const nextSourceEnd = originSourceEnd - (originDuration - nextDuration);
+      const nextSourceEnd = originSourceEnd + (nextDuration - originDuration);
 
       let resizedForPreview: ClipTrackClip | null = null;
       setClips((prev) =>
@@ -111,13 +118,14 @@ export function useTimelineClipEditing({
     const originStart = clip.startSeconds;
     const originDuration = clip.durationSeconds;
     const originSourceStart = clip.sourceStartSeconds;
+    const maxExtendLeft = Math.min(originSourceStart, originStart);
     setResizingClipId(clip.id);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaSeconds = (moveEvent.clientX - originClientX) / pixelsPerSecond;
       const trimFromLeft = clamp(
         deltaSeconds,
-        0,
+        -maxExtendLeft,
         originDuration - MIN_CLIP_DURATION_SECONDS
       );
       const nextStart = originStart + trimFromLeft;
@@ -159,9 +167,15 @@ export function useTimelineClipEditing({
 
   const splitSelectedClipAtPlayhead = useCallback(() => {
     const splitTime = currentTimeRef.current || 0;
-    const targetClipId =
-      selectedClipId || findActiveClipAtTime(splitTime, clips)?.id;
-    if (!targetClipId) {
+    const selectedIds = selectedClipIds.length
+      ? selectedClipIds
+      : selectedClipId
+        ? [selectedClipId]
+        : [];
+    const selectedIdSet = new Set(selectedIds);
+    const hasExplicitSelection = selectedIdSet.size > 0;
+    const fallbackTargetClipId = findActiveClipAtTime(splitTime, clips)?.id;
+    if (!hasExplicitSelection && !fallbackTargetClipId) {
       return;
     }
 
@@ -169,46 +183,48 @@ export function useTimelineClipEditing({
     let didSplit = false;
 
     setClips((prev) => {
-      const index = prev.findIndex((clip) => clip.id === targetClipId);
-      if (index < 0) {
-        return prev;
+      const next = [...prev];
+      for (let index = 0; index < next.length; index += 1) {
+        const clip = next[index];
+        const isTargetClip = hasExplicitSelection
+          ? selectedIdSet.has(clip.id)
+          : clip.id === fallbackTargetClipId;
+        if (!isTargetClip) {
+          continue;
+        }
+
+        const clipStart = clip.startSeconds;
+        const clipEnd = clip.startSeconds + clip.durationSeconds;
+        if (splitTime <= clipStart || splitTime >= clipEnd) {
+          continue;
+        }
+
+        const leftDurationSeconds = splitTime - clipStart;
+        const rightDurationSeconds = clipEnd - splitTime;
+        if (leftDurationSeconds <= 0 || rightDurationSeconds <= 0) {
+          continue;
+        }
+
+        const leftClip: ClipTrackClip = {
+          ...clip,
+          durationSeconds: leftDurationSeconds,
+          sourceEndSeconds: clip.sourceStartSeconds + leftDurationSeconds,
+        };
+        const rightClip: ClipTrackClip = {
+          ...clip,
+          id: crypto.randomUUID(),
+          startSeconds: splitTime,
+          sourceStartSeconds: clip.sourceStartSeconds + leftDurationSeconds,
+          sourceEndSeconds: clip.sourceEndSeconds,
+          durationSeconds: rightDurationSeconds,
+        };
+
+        didSplit = true;
+        rightClipForPreview = rightClip;
+        next.splice(index, 1, leftClip, rightClip);
+        index += 1;
       }
-
-      const clip = prev[index];
-      const clipStart = clip.startSeconds;
-      const clipEnd = clip.startSeconds + clip.durationSeconds;
-      if (splitTime <= clipStart || splitTime >= clipEnd) {
-        return prev;
-      }
-
-      const leftDurationSeconds = splitTime - clipStart;
-      const rightDurationSeconds = clipEnd - splitTime;
-      if (leftDurationSeconds <= 0 || rightDurationSeconds <= 0) {
-        return prev;
-      }
-
-      const leftClip: ClipTrackClip = {
-        ...clip,
-        durationSeconds: leftDurationSeconds,
-        sourceEndSeconds: clip.sourceStartSeconds + leftDurationSeconds,
-      };
-      const rightClip: ClipTrackClip = {
-        ...clip,
-        id: crypto.randomUUID(),
-        startSeconds: splitTime,
-        sourceStartSeconds: clip.sourceStartSeconds + leftDurationSeconds,
-        sourceEndSeconds: clip.sourceEndSeconds,
-        durationSeconds: rightDurationSeconds,
-      };
-
-      didSplit = true;
-      rightClipForPreview = rightClip;
-      return [
-        ...prev.slice(0, index),
-        leftClip,
-        rightClip,
-        ...prev.slice(index + 1),
-      ];
+      return didSplit ? next : prev;
     });
 
     if (!didSplit || !rightClipForPreview) {
@@ -228,19 +244,26 @@ export function useTimelineClipEditing({
   ]);
 
   const deleteSelectedClip = useCallback(() => {
-    if (!selectedClipId) {
+    const targetClipIds = selectedClipIds.length
+      ? selectedClipIds
+      : selectedClipId
+        ? [selectedClipId]
+        : [];
+    if (targetClipIds.length === 0) {
       return;
     }
 
-    const nextClips = clips.filter((clip) => clip.id !== selectedClipId);
+    const targetIdSet = new Set(targetClipIds);
+    const nextClips = clips.filter((clip) => !targetIdSet.has(clip.id));
     if (nextClips.length === clips.length) {
       return;
     }
 
     setClips(nextClips);
-    if (draggingClipId === selectedClipId) {
+    if (draggingClipId && targetIdSet.has(draggingClipId)) {
       clearDragState();
     }
+    clearSelection?.();
 
     const currentTime = currentTimeRef.current || 0;
     const activeClip = findActiveClipAtTime(currentTime, nextClips);
@@ -260,33 +283,16 @@ export function useTimelineClipEditing({
     onPreviewClip,
     onPreviewEmptyFrame,
     selectedClipId,
+    selectedClipIds,
     setClips,
+    clearSelection,
   ]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) {
-        return;
-      }
-
-      if (isEditableElement(event.target)) {
-        return;
-      }
-
-      if (event.key === "Delete" || event.key === "Backspace") {
-        event.preventDefault();
-        deleteSelectedClip();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [deleteSelectedClip]);
 
   return {
     resizingClipId,
     handleClipResizeStart,
     handleClipLeftResizeStart,
     splitSelectedClipAtPlayhead,
+    deleteSelectedClip,
   };
 }

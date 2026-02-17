@@ -14,8 +14,8 @@ import { useClipEditorStore } from "./clipEditorStore";
 import { createCardDragGhost, createTrackBlockGhost } from "./dragGhost";
 import { MEDIA_ASSET_MIME } from "./dnd";
 import { subtleButtonClass } from "./styles";
-import type { ClipDragAsset, ClipVideoAsset } from "./types";
-import { createVideoAsset } from "./videoAsset";
+import type { ClipDragAsset, ClipMediaAsset } from "./types";
+import { createAudioAsset, createVideoAsset } from "./videoAsset";
 
 export function ClipMediaPanel() {
   const setDraggingAsset = useClipEditorStore((state) => state.setDraggingAsset);
@@ -25,7 +25,7 @@ export function ClipMediaPanel() {
   const draggingAssetRef = useRef<ClipDragAsset | null>(null);
   const dragGhostModeRef = useRef<"card" | "track">("card");
   const transparentDragImageRef = useRef<HTMLCanvasElement | null>(null);
-  const [assets, setAssets] = useState<ClipVideoAsset[]>([]);
+  const [assets, setAssets] = useState<ClipMediaAsset[]>([]);
   const [isParsing, setIsParsing] = useState(false);
 
   const hasAssets = assets.length > 0;
@@ -72,7 +72,7 @@ export function ClipMediaPanel() {
       const element = document.elementFromPoint(event.clientX, event.clientY);
       const trackLane =
         element instanceof HTMLElement
-          ? element.closest<HTMLElement>('[data-clip-track-lane="video-1"]')
+          ? element.closest<HTMLElement>('[data-clip-track-lane]')
           : null;
       const isOverTrackLane = Boolean(trackLane);
 
@@ -128,16 +128,22 @@ export function ClipMediaPanel() {
     };
   }, [clearDragGhost]);
 
-  const handleImportVideos = useCallback(async (files: File[]) => {
-    const videoFiles = files.filter((file) => file.type.startsWith("video/"));
-    if (videoFiles.length === 0) {
+  const handleImportMedia = useCallback(async (files: File[]) => {
+    const mediaFiles = files.filter(
+      (file) => file.type.startsWith("video/") || file.type.startsWith("audio/")
+    );
+    if (mediaFiles.length === 0) {
       return;
     }
 
     setIsParsing(true);
     try {
       const parsed = await Promise.allSettled(
-        videoFiles.map((file) => createVideoAsset(file))
+        mediaFiles.map((file) =>
+          file.type.startsWith("audio/")
+            ? createAudioAsset(file)
+            : createVideoAsset(file)
+        )
       );
 
       setAssets((prev) => {
@@ -167,19 +173,19 @@ export function ClipMediaPanel() {
   const handleInputChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
-      await handleImportVideos(files);
+      await handleImportMedia(files);
       event.target.value = "";
     },
-    [handleImportVideos]
+    [handleImportMedia]
   );
 
   const handleDrop = useCallback(
     async (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault();
       const files = Array.from(event.dataTransfer.files || []);
-      await handleImportVideos(files);
+      await handleImportMedia(files);
     },
-    [handleImportVideos]
+    [handleImportMedia]
   );
 
   const openFilePicker = useCallback(() => {
@@ -188,14 +194,17 @@ export function ClipMediaPanel() {
 
   const handleAssetDragStart = (
     event: DragEvent<HTMLElement>,
-    asset: ClipVideoAsset
+    asset: ClipMediaAsset
   ) => {
     const dragAsset: ClipDragAsset = {
       id: asset.id,
       title: asset.title,
       durationSeconds: asset.durationSeconds,
       objectUrl: asset.objectUrl,
+      mediaType: asset.mediaType,
       coverDataUrl: asset.coverDataUrl,
+      frameThumbnails: asset.frameThumbnails,
+      audioLevels: asset.audioLevels,
     };
     clearDragGhost();
     const ghost = createCardDragGhost(dragAsset);
@@ -222,7 +231,7 @@ export function ClipMediaPanel() {
       title="素材库"
       rightSlot={
         <button className={subtleButtonClass} onClick={openFilePicker}>
-          导入视频
+          导入素材
         </button>
       }
       bodyClassName="flex min-h-0 flex-col"
@@ -230,7 +239,7 @@ export function ClipMediaPanel() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="video/*"
+        accept="video/*,audio/*"
         multiple
         className="hidden"
         onChange={handleInputChange}
@@ -238,7 +247,7 @@ export function ClipMediaPanel() {
 
       <div className="border-b border-white/10 px-2 py-2 text-xs">
         <button className="cursor-pointer rounded-md bg-[#22d3ee]/20 px-3 py-1.5 text-[#67e8f9]">
-          视频
+          视频 / 音频
         </button>
       </div>
 

@@ -1,28 +1,39 @@
-export type ClipVideoAsset = {
+export type ClipMediaType = "video" | "audio";
+
+export type ClipMediaAsset = {
   id: string;
   signature: string;
   title: string;
   durationSeconds: number;
   objectUrl: string;
+  mediaType: ClipMediaType;
   coverDataUrl: string | null;
+  frameThumbnails?: string[];
+  audioLevels?: number[];
 };
 
 export type ClipDragAsset = Pick<
-  ClipVideoAsset,
-  "id" | "title" | "durationSeconds" | "objectUrl"
+  ClipMediaAsset,
+  "id" | "title" | "durationSeconds" | "objectUrl" | "mediaType"
 > & {
   coverDataUrl?: string | null;
+  frameThumbnails?: string[];
+  audioLevels?: number[];
 };
 
 export type ClipTrackClip = {
   id: string;
   assetId: string;
   title: string;
+  mediaType: ClipMediaType;
+  mediaDurationSeconds: number;
   startSeconds: number;
   sourceStartSeconds: number;
   sourceEndSeconds: number;
   durationSeconds: number;
   objectUrl: string;
+  frameThumbnails?: string[];
+  audioLevels?: number[];
 };
 
 export type ClipPreviewVideoSource = {

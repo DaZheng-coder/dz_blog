@@ -3,14 +3,18 @@ import { MIN_CLIP_WIDTH, TRACK_COLORS } from "./clipTimelineConfig";
 import { formatTime } from "./clipTimelineUtils";
 import type { ClipTrackClip } from "./types";
 
+const TIMELINE_FRAME_TILE_WIDTH = 32;
+const AUDIO_BAR_WIDTH = 3;
+
 type ClipTimelineClipItemProps = {
   clip: ClipTrackClip;
   index: number;
+  compact?: boolean;
   pixelsPerSecond: number;
-  selectedClipId?: string | null;
+  selectedClipIds?: string[];
   draggingClipId: string | null;
   resizingClipId: string | null;
-  onClipClick: (clip: ClipTrackClip) => void;
+  onClipClick: (clip: ClipTrackClip, appendSelection: boolean) => void;
   onClipDragStart: (
     event: ReactDragEvent<HTMLElement>,
     clip: ClipTrackClip
@@ -29,8 +33,9 @@ type ClipTimelineClipItemProps = {
 export function ClipTimelineClipItem({
   clip,
   index,
+  compact = false,
   pixelsPerSecond,
-  selectedClipId,
+  selectedClipIds,
   draggingClipId,
   resizingClipId,
   onClipClick,
@@ -39,31 +44,109 @@ export function ClipTimelineClipItem({
   onClipLeftResizeStart,
   onClipResizeStart,
 }: ClipTimelineClipItemProps) {
+  const clipWidth = Math.max(clip.durationSeconds * pixelsPerSecond, MIN_CLIP_WIDTH);
+  const blockClass = compact ? "top-1 h-4 px-1 py-0" : "top-1.5 h-[3.25rem] px-2 py-1";
+  const titleClass = compact ? "truncate text-[10px] font-medium leading-4" : "truncate font-medium";
+  const handleClass = compact ? "w-2" : "w-3";
+  const hasVideoFrames =
+    !compact && clip.mediaType === "video" && (clip.frameThumbnails?.length || 0) > 0;
+  const hasAudioLevels = clip.mediaType === "audio" && (clip.audioLevels?.length || 0) > 0;
+  const displayedFrames = (() => {
+    if (!hasVideoFrames || !clip.frameThumbnails) {
+      return [];
+    }
+    const sourceFrames = clip.frameThumbnails;
+    const sourceCount = sourceFrames.length;
+    const slotCount = Math.max(1, Math.ceil(clipWidth / TIMELINE_FRAME_TILE_WIDTH));
+    if (sourceCount === 1 || slotCount === 1) {
+      return [sourceFrames[0]];
+    }
+    return Array.from({ length: slotCount }, (_, index) => {
+      const ratio = index / (slotCount - 1);
+      const sourceIndex = Math.min(
+        sourceCount - 1,
+        Math.round(ratio * (sourceCount - 1))
+      );
+      return sourceFrames[sourceIndex];
+    });
+  })();
+  const displayedAudioLevels = (() => {
+    if (!hasAudioLevels || !clip.audioLevels) {
+      return [];
+    }
+    const sourceLevels = clip.audioLevels;
+    const sourceCount = sourceLevels.length;
+    const slotCount = Math.max(1, Math.ceil(clipWidth / AUDIO_BAR_WIDTH));
+    if (sourceCount === 1 || slotCount === 1) {
+      return [sourceLevels[0]];
+    }
+    return Array.from({ length: slotCount }, (_, levelIndex) => {
+      const ratio = levelIndex / (slotCount - 1);
+      const sourceIndex = Math.min(
+        sourceCount - 1,
+        Math.round(ratio * (sourceCount - 1))
+      );
+      return sourceLevels[sourceIndex];
+    });
+  })();
+
   return (
     <article
       draggable
       onClick={(event) => {
         event.stopPropagation();
-        onClipClick(clip);
+        onClipClick(clip, event.metaKey || event.ctrlKey);
       }}
       onDragStart={(event) => onClipDragStart(event, clip)}
       onDragEnd={onClipDragEnd}
-      className={`absolute top-1.5 h-[3.25rem] cursor-grab rounded-md border bg-gradient-to-r px-2 py-1 text-xs text-white ${
+      className={`absolute cursor-grab rounded-md border bg-gradient-to-r text-xs text-white ${blockClass} ${
         TRACK_COLORS[index % TRACK_COLORS.length]
-      } ${selectedClipId === clip.id ? "ring-2 ring-[#67e8f9]" : ""} ${
+      } ${selectedClipIds?.includes(clip.id) ? "ring-2 ring-[#67e8f9]" : ""} ${
         draggingClipId === clip.id ? "opacity-60" : "opacity-100"
       }`}
       style={{
         left: `${clip.startSeconds * pixelsPerSecond}px`,
-        width: `${Math.max(
-          clip.durationSeconds * pixelsPerSecond,
-          MIN_CLIP_WIDTH
-        )}px`,
+        width: `${clipWidth}px`,
       }}
     >
+      {hasVideoFrames ? (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-md">
+          <div className="flex h-full w-full">
+            {displayedFrames.map((frame, frameIndex) => (
+              <img
+                key={`${clip.id}-frame-${frameIndex}`}
+                src={frame}
+                alt=""
+                className="h-full shrink-0 object-cover"
+                style={{ width: `${TIMELINE_FRAME_TILE_WIDTH}px` }}
+                draggable={false}
+              />
+            ))}
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
+        </div>
+      ) : null}
+      {hasAudioLevels ? (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-md">
+          <div className="flex h-full w-full items-end gap-px px-1">
+            {displayedAudioLevels.map((level, levelIndex) => (
+              <span
+                key={`${clip.id}-audio-level-${levelIndex}`}
+                className="block shrink-0 rounded-sm bg-white/55"
+                style={{
+                  width: compact ? "2px" : `${AUDIO_BAR_WIDTH}px`,
+                  height: `${Math.max(16, level * 100)}%`,
+                }}
+              />
+            ))}
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent" />
+        </div>
+      ) : null}
+
       <button
         type="button"
-        className={`absolute -left-1 top-0 h-full w-3 cursor-ew-resize rounded-l-md border-r border-white/25 ${
+        className={`absolute -left-1 top-0 z-20 h-full cursor-ew-resize rounded-l-md border-r border-white/25 ${handleClass} ${
           resizingClipId === clip.id
             ? "bg-[#67e8f9]/40"
             : "bg-white/15 hover:bg-[#67e8f9]/30"
@@ -72,11 +155,23 @@ export function ClipTimelineClipItem({
         onClick={(event) => event.stopPropagation()}
         aria-label="调整片段起始"
       />
-      <p className="truncate font-medium">{clip.title}</p>
-      <p className="mt-1 text-[11px] text-white/80">{formatTime(clip.durationSeconds)}</p>
+      <p
+        className={`${titleClass} relative z-10 ${
+          hasVideoFrames || hasAudioLevels
+            ? "drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
+            : ""
+        }`}
+      >
+        {clip.title}
+      </p>
+      {!compact ? (
+        <p className="relative z-10 mt-1 text-[11px] text-white/80">
+          {formatTime(clip.durationSeconds)}
+        </p>
+      ) : null}
       <button
         type="button"
-        className={`absolute -right-1 top-0 h-full w-3 cursor-ew-resize rounded-r-md border-l border-white/25 ${
+        className={`absolute -right-1 top-0 z-20 h-full cursor-ew-resize rounded-r-md border-l border-white/25 ${handleClass} ${
           resizingClipId === clip.id
             ? "bg-[#67e8f9]/40"
             : "bg-white/15 hover:bg-[#67e8f9]/30"
