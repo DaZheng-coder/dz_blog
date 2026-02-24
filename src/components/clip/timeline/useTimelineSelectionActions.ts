@@ -3,13 +3,13 @@ import type { ClipTrackClip } from "../shared/types";
 
 type UseTimelineSelectionActionsOptions = {
   timelineToolMode: "select" | "cut";
-  selectedTimelineTrack: "video" | "audio" | null;
+  selectedTimelineTrack: "video" | "audio" | "text" | null;
   selectedTimelineClipCount: number;
   pixelsPerSecond: number;
   setTimelineToolMode: (mode: "select" | "cut") => void;
   setSelectedTimelineClip: (
     clipId: string | null,
-    track: "video" | "audio" | null,
+    track: "video" | "audio" | "text" | null,
     appendSelection?: boolean
   ) => void;
   previewTimelineClip: (clip: ClipTrackClip) => void;

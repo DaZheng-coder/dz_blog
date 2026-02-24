@@ -24,6 +24,12 @@ export function ClipPreviewPanel() {
   const setTimelinePlaying = useClipEditorStore(
     (state) => state.setTimelinePlaying
   );
+  const setSelectedInspectorAsset = useClipEditorStore(
+    (state) => state.setSelectedInspectorAsset
+  );
+  const setSelectedPreviewVideoInfo = useClipEditorStore(
+    (state) => state.setSelectedPreviewVideoInfo
+  );
   const textOverlays = useClipEditorStore((state) => state.textOverlays);
   const setTextOverlays = useClipEditorStore((state) => state.setTextOverlays);
   const previewStageRef = useRef<HTMLDivElement>(null);
@@ -131,6 +137,18 @@ export function ClipPreviewPanel() {
                           className="h-full w-full object-contain"
                           playsInline
                           muted
+                          onClick={() => {
+                            if (!timelineSource) {
+                              return;
+                            }
+                            setSelectedInspectorAsset(null);
+                            setSelectedPreviewVideoInfo({
+                              objectUrl: timelineSource.objectUrl,
+                              durationSeconds: timelineSource.durationSeconds,
+                              sourceStartSeconds: timelineSource.sourceStartSeconds,
+                              sourceEndSeconds: timelineSource.sourceEndSeconds,
+                            });
+                          }}
                         />
                       ) : (
                         <div className="h-full w-full bg-black" />

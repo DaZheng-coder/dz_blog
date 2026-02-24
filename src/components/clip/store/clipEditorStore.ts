@@ -13,6 +13,13 @@ type TimelineFramePayload = {
   isPlaying: boolean;
 };
 
+type PreviewVideoInfo = {
+  objectUrl: string;
+  durationSeconds: number;
+  sourceStartSeconds?: number;
+  sourceEndSeconds?: number;
+};
+
 function sameSingleSelectedId(ids: string[], id: string) {
   return ids.length === 1 && ids[0] === id;
 }
@@ -24,8 +31,9 @@ type ClipEditorStore = {
   textOverlays: ClipTextOverlay[];
   selectedTimelineClipId: string | null;
   selectedTimelineClipIds: string[];
-  selectedTimelineTrack: "video" | "audio" | null;
+  selectedTimelineTrack: "video" | "audio" | "text" | null;
   previewSource: ClipPreviewSource | null;
+  selectedPreviewVideoInfo: PreviewVideoInfo | null;
   selectedInspectorAsset: ClipMediaAsset | null;
   timelinePlaying: boolean;
   timelineToolMode: "select" | "cut";
@@ -50,10 +58,11 @@ type ClipEditorStore = {
   addTextOverlay: (overlay: Omit<ClipTextOverlay, "id">) => string;
   setSelectedTimelineClip: (
     clipId: string | null,
-    track: "video" | "audio" | null,
+    track: "video" | "audio" | "text" | null,
     appendSelection?: boolean
   ) => void;
   setTimelinePlaying: (playing: boolean) => void;
+  setSelectedPreviewVideoInfo: (info: PreviewVideoInfo | null) => void;
   setSelectedInspectorAsset: (asset: ClipMediaAsset | null) => void;
   setTimelineToolMode: (mode: "select" | "cut") => void;
   setTrackTotalDurationSeconds: (durationSeconds: number) => void;
@@ -71,6 +80,7 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
   selectedTimelineClipIds: [],
   selectedTimelineTrack: null,
   previewSource: null,
+  selectedPreviewVideoInfo: null,
   selectedInspectorAsset: null,
   timelinePlaying: false,
   timelineToolMode: "select",
@@ -131,6 +141,7 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
       };
     }),
   setTimelinePlaying: (playing) => set({ timelinePlaying: playing }),
+  setSelectedPreviewVideoInfo: (info) => set({ selectedPreviewVideoInfo: info }),
   setSelectedInspectorAsset: (asset) => set({ selectedInspectorAsset: asset }),
   setTimelineToolMode: (mode) => set({ timelineToolMode: mode }),
   setTrackTotalDurationSeconds: (durationSeconds) =>

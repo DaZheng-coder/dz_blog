@@ -185,11 +185,28 @@ export function ClipTimelineTrackView() {
     clearSelection: () => setSelectedTimelineClip(null, null),
   });
 
+  const deleteSelectedTextClips = useCallback(() => {
+    if (selectedTimelineTrack !== "text" || selectedTimelineClipIds.length === 0) {
+      return;
+    }
+    const selectedIdSet = new Set(selectedTimelineClipIds);
+    setTextOverlays((prev) =>
+      prev.filter((overlay) => !selectedIdSet.has(overlay.id))
+    );
+    setSelectedTimelineClip(null, null);
+  }, [
+    selectedTimelineClipIds,
+    selectedTimelineTrack,
+    setSelectedTimelineClip,
+    setTextOverlays,
+  ]);
+
   useTimelineHotkeys({
     selectedTimelineTrack,
     selectedTimelineClipCount: selectedTimelineClipIds.length,
     onDeleteVideo: videoClipEditing.deleteSelectedClip,
     onDeleteAudio: audioClipEditing.deleteSelectedClip,
+    onDeleteText: deleteSelectedTextClips,
   });
 
   const {
@@ -619,6 +636,14 @@ export function ClipTimelineTrackView() {
                             targetClip.startSeconds + targetClip.durationSeconds
                           )
                         }
+                        onSelect={(targetClipId, appendSelection) =>
+                          setSelectedTimelineClip(
+                            targetClipId,
+                            "text",
+                            appendSelection
+                          )
+                        }
+                        isSelected={selectedTimelineClipIds.includes(clip.id)}
                       />
                     );
                   }}

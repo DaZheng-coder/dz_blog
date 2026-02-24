@@ -30,6 +30,8 @@ type ClipTimelineTextClipItemProps = {
     event: ReactMouseEvent<HTMLElement>,
     clip: ClipTrackClip
   ) => void;
+  onSelect: (clipId: string, appendSelection: boolean) => void;
+  isSelected: boolean;
 };
 
 export function ClipTimelineTextClipItem({
@@ -43,6 +45,8 @@ export function ClipTimelineTextClipItem({
   onSplitAtClientX,
   onResizeLeftStart,
   onResizeRightStart,
+  onSelect,
+  isSelected,
 }: ClipTimelineTextClipItemProps) {
   const clipWidth = Math.max(
     minWidthPx,
@@ -55,7 +59,9 @@ export function ClipTimelineTextClipItem({
     <article
       key={clip.id}
       draggable={timelineToolMode !== "cut"}
-      className={`absolute left-0 top-0 flex h-4.5 items-center rounded-md border bg-gradient-to-r px-1 text-[10px] text-white/95 ${colorClass}`}
+      className={`absolute left-0 top-0 flex h-4.5 items-center rounded-md border bg-gradient-to-r px-1 text-[10px] text-white/95 ${
+        isSelected ? "ring-2 ring-[#67e8f9]" : ""
+      } ${colorClass}`}
       style={{
         transform: `translate3d(${clipX}px, 0, 0)`,
         width: `${clipWidth}px`,
@@ -78,6 +84,10 @@ export function ClipTimelineTextClipItem({
       }}
       onClick={(event) => {
         event.stopPropagation();
+        if (timelineToolMode === "select") {
+          onSelect(clip.id, event.metaKey || event.ctrlKey);
+          return;
+        }
         if (timelineToolMode !== "cut") {
           return;
         }

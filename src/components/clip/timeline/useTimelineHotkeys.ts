@@ -2,10 +2,11 @@ import { useEffect } from "react";
 import { isEditableElement } from "./clipTimelineUtils";
 
 type UseTimelineHotkeysOptions = {
-  selectedTimelineTrack: "video" | "audio" | null;
+  selectedTimelineTrack: "video" | "audio" | "text" | null;
   selectedTimelineClipCount: number;
   onDeleteVideo: () => void;
   onDeleteAudio: () => void;
+  onDeleteText: () => void;
 };
 
 export function useTimelineHotkeys({
@@ -13,6 +14,7 @@ export function useTimelineHotkeys({
   selectedTimelineClipCount,
   onDeleteVideo,
   onDeleteAudio,
+  onDeleteText,
 }: UseTimelineHotkeysOptions) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -29,10 +31,13 @@ export function useTimelineHotkeys({
       if (selectedTimelineClipCount > 0) {
         onDeleteVideo();
         onDeleteAudio();
+        onDeleteText();
         return;
       }
       if (selectedTimelineTrack === "audio") {
         onDeleteAudio();
+      } else if (selectedTimelineTrack === "text") {
+        onDeleteText();
       } else {
         onDeleteVideo();
       }
@@ -42,6 +47,7 @@ export function useTimelineHotkeys({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     onDeleteAudio,
+    onDeleteText,
     onDeleteVideo,
     selectedTimelineClipCount,
     selectedTimelineTrack,
