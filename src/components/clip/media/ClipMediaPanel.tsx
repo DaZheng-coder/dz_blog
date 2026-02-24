@@ -47,11 +47,20 @@ export function ClipMediaPanel({
     (state) => state.setSelectedInspectorAsset
   );
   const textOverlays = useClipEditorStore((state) => state.textOverlays);
+  const selectedTimelineTrack = useClipEditorStore(
+    (state) => state.selectedTimelineTrack
+  );
+  const selectedTimelineClipIds = useClipEditorStore(
+    (state) => state.selectedTimelineClipIds
+  );
   const timelineCurrentTimeSeconds = useClipEditorStore(
     (state) => state.timelineCurrentTimeSeconds
   );
   const setTextOverlays = useClipEditorStore((state) => state.setTextOverlays);
   const addTextOverlay = useClipEditorStore((state) => state.addTextOverlay);
+  const setSelectedTimelineClip = useClipEditorStore(
+    (state) => state.setSelectedTimelineClip
+  );
   const dragGhostRef = useRef<HTMLElement | null>(null);
   const cardGhostRef = useRef<HTMLElement | null>(null);
   const trackGhostRef = useRef<HTMLElement | null>(null);
@@ -263,6 +272,13 @@ export function ClipMediaPanel({
       }),
     [textOverlays]
   );
+  const selectedTextClipIdSet = useMemo(
+    () =>
+      selectedTimelineTrack === "text"
+        ? new Set(selectedTimelineClipIds)
+        : new Set<string>(),
+    [selectedTimelineClipIds, selectedTimelineTrack]
+  );
 
   return (
     <ClipPanelFrame
@@ -355,14 +371,28 @@ export function ClipMediaPanel({
               </p>
             ) : (
               <div className="space-y-2">
-                {sortedTextOverlays.map((overlay) => (
+                {sortedTextOverlays.map((overlay) => {
+                  const isSelected = selectedTextClipIdSet.has(overlay.id);
+                  return (
                   <div
                     key={overlay.id}
-                    className="rounded border border-white/10 bg-white/[0.03] p-2"
+                    className={`cursor-pointer rounded border p-2 ${
+                      isSelected
+                        ? "border-[#67e8f9]/70 bg-[#22d3ee]/10 ring-1 ring-[#67e8f9]/60"
+                        : "border-white/10 bg-white/[0.03]"
+                    }`}
+                    onClick={(event) =>
+                      setSelectedTimelineClip(
+                        overlay.id,
+                        "text",
+                        event.metaKey || event.ctrlKey
+                      )
+                    }
                   >
                     <input
                       className="min-w-0 w-full rounded border border-white/15 bg-white/5 px-2 py-1 text-xs text-white outline-none focus:border-[#22d3ee]/70"
                       value={overlay.text}
+                      onClick={(event) => event.stopPropagation()}
                       onChange={(event) =>
                         setTextOverlays((prev) =>
                           prev.map((item) =>
@@ -380,17 +410,19 @@ export function ClipMediaPanel({
                       </span>
                       <button
                         className="cursor-pointer rounded border border-red-400/35 bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:border-red-300/70"
-                        onClick={() =>
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setTextOverlays((prev) =>
                             prev.filter((item) => item.id !== overlay.id)
-                          )
-                        }
+                          );
+                        }}
                       >
                         <DeleteIcon className="h-4 w-4 fill-current" />
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
