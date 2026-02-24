@@ -44,6 +44,8 @@ export type ClipTextOverlay = {
   xPercent: number;
   yPercent: number;
   fontSize: number;
+  letterSpacing: number;
+  lineHeight: number;
   color: string;
 };
 

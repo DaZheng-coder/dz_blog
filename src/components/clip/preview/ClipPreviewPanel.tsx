@@ -165,6 +165,8 @@ export function ClipPreviewPanel() {
                         transform: "translate(-50%, -50%)",
                         color: overlay.color,
                         fontSize: `${overlay.fontSize}px`,
+                        letterSpacing: `${overlay.letterSpacing ?? 0}px`,
+                        lineHeight: overlay.lineHeight ?? 1.2,
                         fontWeight: 600,
                         textAlign: "center",
                         whiteSpace: "pre-wrap",

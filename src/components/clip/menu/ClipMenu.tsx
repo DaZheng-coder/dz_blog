@@ -95,6 +95,8 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
       xPercent: 50,
       yPercent: 85,
       fontSize: 40,
+      letterSpacing: 0,
+      lineHeight: 1.2,
       color: "#ffffff",
     });
   };

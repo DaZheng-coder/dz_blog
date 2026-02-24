@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { ClipPanelFrame } from "../shared/ClipPanelFrame";
 import { formatDuration } from "../shared/time";
 import { useClipEditorStore } from "../store/clipEditorStore";
+import type { ClipTextOverlay } from "../shared/types";
 
 export function ClipInspectorPanel() {
   const setSelectedInspectorAsset = useClipEditorStore(
@@ -30,6 +31,20 @@ export function ClipInspectorPanel() {
     (state) => state.audioTimelineClips
   );
   const textOverlays = useClipEditorStore((state) => state.textOverlays);
+  const setTextOverlays = useClipEditorStore((state) => state.setTextOverlays);
+
+  const updateTextOverlay = (
+    overlayId: string,
+    patch: Partial<
+      Pick<ClipTextOverlay, "fontSize" | "letterSpacing" | "lineHeight" | "color">
+    >
+  ) => {
+    setTextOverlays((prev) =>
+      prev.map((overlay) =>
+        overlay.id === overlayId ? { ...overlay, ...patch } : overlay
+      )
+    );
+  };
 
   const selectedTimelineEntity = useMemo(() => {
     if (!selectedTimelineClipId || !selectedTimelineTrack) {
@@ -132,10 +147,103 @@ export function ClipInspectorPanel() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span className="text-[#cbd5e1]">字间距</span>
+                  <span className="rounded bg-white/10 px-2 py-0.5 text-white">
+                    {(selectedTimelineEntity.overlay.letterSpacing ?? 0).toFixed(1)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#cbd5e1]">行高</span>
+                  <span className="rounded bg-white/10 px-2 py-0.5 text-white">
+                    {(selectedTimelineEntity.overlay.lineHeight ?? 1.2).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-[#cbd5e1]">颜色</span>
                   <span className="rounded bg-white/10 px-2 py-0.5 text-white">
                     {selectedTimelineEntity.overlay.color}
                   </span>
+                </div>
+                <div className="space-y-2 rounded border border-white/10 bg-black/20 p-2">
+                  <p className="text-[11px] text-[#94a3b8]">文本样式</p>
+
+                  <label className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="text-[#cbd5e1]">字体大小</span>
+                    <input
+                      type="number"
+                      min={12}
+                      max={120}
+                      step={1}
+                      value={Math.round(selectedTimelineEntity.overlay.fontSize)}
+                      onChange={(event) =>
+                        updateTextOverlay(selectedTimelineEntity.overlay.id, {
+                          fontSize: Math.max(
+                            12,
+                            Math.min(120, Number(event.target.value) || 12)
+                          ),
+                        })
+                      }
+                      className="w-20 rounded border border-white/15 bg-white/5 px-2 py-1 text-right text-xs text-white outline-none focus:border-[#22d3ee]/70"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="text-[#cbd5e1]">字间距</span>
+                    <input
+                      type="number"
+                      min={-8}
+                      max={24}
+                      step={0.5}
+                      value={(selectedTimelineEntity.overlay.letterSpacing ?? 0).toFixed(
+                        1
+                      )}
+                      onChange={(event) =>
+                        updateTextOverlay(selectedTimelineEntity.overlay.id, {
+                          letterSpacing: Math.max(
+                            -8,
+                            Math.min(24, Number(event.target.value) || 0)
+                          ),
+                        })
+                      }
+                      className="w-20 rounded border border-white/15 bg-white/5 px-2 py-1 text-right text-xs text-white outline-none focus:border-[#22d3ee]/70"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="text-[#cbd5e1]">行高</span>
+                    <input
+                      type="number"
+                      min={0.8}
+                      max={2.4}
+                      step={0.05}
+                      value={(selectedTimelineEntity.overlay.lineHeight ?? 1.2).toFixed(
+                        2
+                      )}
+                      onChange={(event) =>
+                        updateTextOverlay(selectedTimelineEntity.overlay.id, {
+                          lineHeight: Math.max(
+                            0.8,
+                            Math.min(2.4, Number(event.target.value) || 1.2)
+                          ),
+                        })
+                      }
+                      className="w-20 rounded border border-white/15 bg-white/5 px-2 py-1 text-right text-xs text-white outline-none focus:border-[#22d3ee]/70"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="text-[#cbd5e1]">颜色</span>
+                    <input
+                      type="color"
+                      value={selectedTimelineEntity.overlay.color || "#ffffff"}
+                      onChange={(event) =>
+                        updateTextOverlay(selectedTimelineEntity.overlay.id, {
+                          color: event.target.value,
+                        })
+                      }
+                      className="h-6 w-10 cursor-pointer rounded border border-white/20 bg-transparent p-0"
+                    />
+                  </label>
                 </div>
               </>
             )}
