@@ -18,6 +18,9 @@ export function ClipPreviewPanel() {
   const timelineTotalDurationSeconds = useClipEditorStore(
     (state) => state.trackTotalDurationSeconds
   );
+  const timelineCurrentTimeSeconds = useClipEditorStore(
+    (state) => state.timelineCurrentTimeSeconds
+  );
   const setTimelinePlaying = useClipEditorStore(
     (state) => state.setTimelinePlaying
   );
@@ -30,7 +33,6 @@ export function ClipPreviewPanel() {
     videoRef,
     isEmptySource,
     effectivePlaying,
-    timelineCurrentSeconds,
     togglePlayPause,
     seekBy,
   } = useClipPreviewController({
@@ -41,9 +43,10 @@ export function ClipPreviewPanel() {
 
   const activeTextOverlays = textOverlays.filter(
     (overlay) =>
-      timelineCurrentSeconds >= overlay.startSeconds &&
-      timelineCurrentSeconds <= overlay.endSeconds
+      timelineCurrentTimeSeconds >= overlay.startSeconds &&
+      timelineCurrentTimeSeconds < overlay.endSeconds
   );
+  const showPreviewStage = Boolean(previewSource) || activeTextOverlays.length > 0;
 
   const handleOverlayDragStart = (
     event: React.MouseEvent<HTMLDivElement>,
@@ -106,7 +109,7 @@ export function ClipPreviewPanel() {
         <div className="flex h-full w-full items-center justify-center">
           <div className="flex h-full w-full max-w-3xl flex-col">
             <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_30px_80px_-30px_rgba(34,211,238,0.35)]">
-              {!previewSource && (
+              {!showPreviewStage && (
                 <div className="relative h-full w-full overflow-hidden bg-[#090d14]">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,#22d3ee30_0%,transparent_35%),radial-gradient(circle_at_75%_75%,#3b82f640_0%,transparent_42%)]" />
                   <div className="absolute inset-0 grid place-items-center text-sm text-[#9ca3af]">
@@ -114,47 +117,48 @@ export function ClipPreviewPanel() {
                   </div>
                 </div>
               )}
-              {previewSource && (
-                <>
+              {showPreviewStage && (
+                <div ref={previewStageRef} className="relative h-full w-full">
                   {isEmptySource ? (
-                    <div className="grid h-full w-full place-items-center bg-black text-sm text-[#9ca3af]"></div>
+                    <div className="h-full w-full bg-black" />
                   ) : (
-                    <div
-                      ref={previewStageRef}
-                      className="relative h-full w-full"
-                    >
-                      <video
-                        key={`${timelineSource?.sourceType}-${timelineSource?.objectUrl}`}
-                        ref={videoRef}
-                        src={timelineSource?.objectUrl}
-                        className="h-full w-full object-contain"
-                        playsInline
-                        muted
-                      />
-                      {activeTextOverlays.map((overlay) => (
-                        <div
-                          key={overlay.id}
-                          className="absolute cursor-move select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
-                          style={{
-                            left: `${overlay.xPercent}%`,
-                            top: `${overlay.yPercent}%`,
-                            transform: "translate(-50%, -50%)",
-                            color: overlay.color,
-                            fontSize: `${overlay.fontSize}px`,
-                            fontWeight: 600,
-                            textAlign: "center",
-                            whiteSpace: "pre-wrap",
-                          }}
-                          onMouseDown={(event) =>
-                            handleOverlayDragStart(event, overlay.id)
-                          }
-                        >
-                          {overlay.text}
-                        </div>
-                      ))}
-                    </div>
+                    <>
+                      {previewSource ? (
+                        <video
+                          key={`${timelineSource?.sourceType}-${timelineSource?.objectUrl}`}
+                          ref={videoRef}
+                          src={timelineSource?.objectUrl}
+                          className="h-full w-full object-contain"
+                          playsInline
+                          muted
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-black" />
+                      )}
+                    </>
                   )}
-                </>
+                  {activeTextOverlays.map((overlay) => (
+                    <div
+                      key={overlay.id}
+                      className="absolute cursor-move select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
+                      style={{
+                        left: `${overlay.xPercent}%`,
+                        top: `${overlay.yPercent}%`,
+                        transform: "translate(-50%, -50%)",
+                        color: overlay.color,
+                        fontSize: `${overlay.fontSize}px`,
+                        fontWeight: 600,
+                        textAlign: "center",
+                        whiteSpace: "pre-wrap",
+                      }}
+                      onMouseDown={(event) =>
+                        handleOverlayDragStart(event, overlay.id)
+                      }
+                    >
+                      {overlay.text}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
             <div className="mt-2 relative flex items-center justify-center rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-[#d1d5db]">
@@ -186,7 +190,7 @@ export function ClipPreviewPanel() {
               </div>
               <div className="text-right text-[#9ca3af] absolute right-3">
                 <p>
-                  {formatDuration(timelineCurrentSeconds)} /{" "}
+                  {formatDuration(timelineCurrentTimeSeconds)} /{" "}
                   {formatDuration(timelineTotalDurationSeconds)}
                 </p>
                 <p className="text-[11px] text-[#6b7280]">

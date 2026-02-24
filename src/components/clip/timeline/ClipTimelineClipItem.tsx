@@ -7,6 +7,8 @@ import {
 import { TRACK_COLORS } from "./clipTimelineConfig";
 import { formatTime } from "./clipTimelineUtils";
 import type { ClipTrackClip } from "../shared/types";
+import VideoIcon from "../../../assets/video.svg?react";
+import AudioIcon from "../../../assets/audio.svg?react";
 
 const TIMELINE_FRAME_TILE_WIDTH = 32;
 const AUDIO_BAR_WIDTH = 3;
@@ -65,19 +67,29 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
     () => clip.startSeconds * pixelsPerSecond,
     [clip.startSeconds, pixelsPerSecond]
   );
-  const blockClass = compact ? "top-1 h-4 px-1 py-0" : "top-1.5 h-[3.25rem] px-2 py-1";
-  const titleClass = compact ? "truncate text-[10px] font-medium leading-4" : "truncate font-medium";
+  const blockClass = compact
+    ? "top-1 h-4 px-1 py-0"
+    : "top-1.5 h-[3.25rem] px-2 py-1";
+  const titleClass = compact
+    ? "truncate text-[10px] font-medium leading-4"
+    : "truncate font-medium";
   const handleClass = compact ? "w-2" : "w-3";
   const hasVideoFrames =
-    !compact && clip.mediaType === "video" && (clip.frameThumbnails?.length || 0) > 0;
-  const hasAudioLevels = clip.mediaType === "audio" && (clip.audioLevels?.length || 0) > 0;
+    !compact &&
+    clip.mediaType === "video" &&
+    (clip.frameThumbnails?.length || 0) > 0;
+  const hasAudioLevels =
+    clip.mediaType === "audio" && (clip.audioLevels?.length || 0) > 0;
   const displayedFrames = useMemo(() => {
     if (!hasVideoFrames || !clip.frameThumbnails) {
       return [];
     }
     const sourceFrames = clip.frameThumbnails;
     const sourceCount = sourceFrames.length;
-    const slotCount = Math.max(1, Math.ceil(clipWidth / TIMELINE_FRAME_TILE_WIDTH));
+    const slotCount = Math.max(
+      1,
+      Math.ceil(clipWidth / TIMELINE_FRAME_TILE_WIDTH)
+    );
     if (sourceCount === 1 || slotCount === 1) {
       return [sourceFrames[0]];
     }
@@ -191,14 +203,21 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
         disabled={isCutMode}
         style={{ cursor: isCutMode ? "inherit" : "ew-resize" }}
       />
+
       <p
-        className={`${titleClass} relative z-10 ${
+        className={`${titleClass} relative flex gap-1 z-10 items-center ${
           hasVideoFrames || hasAudioLevels
             ? "drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
             : ""
         }`}
       >
-        {clip.title}
+        {clip.mediaType === "video" ? (
+          <VideoIcon className="h-4 w-4 fill-current" />
+        ) : null}
+        {clip.mediaType === "audio" ? (
+          <AudioIcon className="h-4 w-4 fill-current" />
+        ) : null}
+        <span>{clip.title}</span>
       </p>
       {!compact ? (
         <p className="relative z-10 mt-1 text-[11px] text-white/80">

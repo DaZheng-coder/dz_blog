@@ -7,12 +7,16 @@ type ClipTimelineDragPreviewItemProps = {
   dragPreview: TimelineDragPreview;
   pixelsPerSecond: number;
   compact?: boolean;
+  layoutClassName?: string;
+  toneClassName?: string;
 };
 
 export function ClipTimelineDragPreviewItem({
   dragPreview,
   pixelsPerSecond,
   compact = false,
+  layoutClassName,
+  toneClassName,
 }: ClipTimelineDragPreviewItemProps) {
   const x = dragPreview.startSeconds * pixelsPerSecond;
   const width = Math.max(
@@ -21,8 +25,11 @@ export function ClipTimelineDragPreviewItem({
   );
   return (
     <article
-      className={`pointer-events-none absolute left-0 rounded-md border border-[#67e8f9] bg-[#22d3ee]/20 text-xs text-[#d5faff] will-change-transform ${
-        compact ? "top-1 h-4 px-1 py-0" : "top-1.5 h-[3.25rem] px-2 py-1"
+      className={`pointer-events-none absolute left-0 rounded-md border text-xs text-[#d5faff] will-change-transform ${
+        toneClassName || "border-[#67e8f9] bg-[#22d3ee]/20"
+      } ${
+        layoutClassName ||
+        (compact ? "top-1 h-4 px-1 py-0" : "top-1.5 h-[3.25rem] px-2 py-1")
       }`}
       style={{
         transform: `translate3d(${x}px, 0, 0)`,

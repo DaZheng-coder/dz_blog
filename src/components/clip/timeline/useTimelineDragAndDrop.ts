@@ -75,6 +75,7 @@ type UseTimelineDragAndDropOptions = {
     createdClip: ClipTrackClip;
     asset: ClipDragAsset;
   }) => void;
+  allowAssetInsert?: boolean;
 };
 
 export function useTimelineDragAndDrop({
@@ -88,6 +89,7 @@ export function useTimelineDragAndDrop({
   onAssetDropComplete,
   acceptedMediaType,
   onAssetClipCreated,
+  allowAssetInsert = true,
 }: UseTimelineDragAndDropOptions) {
   const dragOffsetSecondsRef = useRef(0);
   const dragPreviewSignatureRef = useRef("");
@@ -198,6 +200,10 @@ export function useTimelineDragAndDrop({
     }
 
     try {
+      if (!allowAssetInsert) {
+        clearDragState();
+        return;
+      }
       const assetFromData = readDragAssetFromDataTransfer(
         event.dataTransfer,
         draggingAsset
@@ -289,6 +295,10 @@ export function useTimelineDragAndDrop({
     }
 
     try {
+      if (!allowAssetInsert) {
+        clearDragState();
+        return;
+      }
       const assetFromData = readDragAssetFromDataTransfer(
         event.dataTransfer,
         draggingAsset

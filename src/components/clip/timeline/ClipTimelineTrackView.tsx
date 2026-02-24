@@ -1,16 +1,26 @@
-import { useRef, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useClipEditorStore } from "../store/clipEditorStore";
 import { ClipTimelineLane } from "./ClipTimelineLane";
 import { ClipTimelinePlayhead } from "./ClipTimelinePlayhead";
 import { ClipTimelineRuler } from "./ClipTimelineRuler";
+import { ClipTimelineTextClipItem } from "./ClipTimelineTextClipItem";
 import { ClipTimelineToolbar } from "./ClipTimelineToolbar";
+import { TRACK_COLORS } from "./clipTimelineConfig";
 import { useTimelineAudioPlayback } from "./useTimelineAudioPlayback";
 import { useTimelineClipEditing } from "./useTimelineClipEditing";
 import { useTimelineDragAndDrop } from "./useTimelineDragAndDrop";
 import { useTimelineHotkeys } from "./useTimelineHotkeys";
 import { useTimelinePlayback } from "./useTimelinePlayback";
 import { useTimelineSelectionActions } from "./useTimelineSelectionActions";
+import type { ClipTrackClip } from "../shared/types";
 
 export type TimelineDragPreview = {
   title: string;
@@ -19,8 +29,21 @@ export type TimelineDragPreview = {
 };
 
 const TIMELINE_LEFT_INSET_PX = 20;
+const TEXT_TRACK_MIN_BLOCK_WIDTH_PX = 14;
 const CUT_CURSOR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8.2 8.1 20 20"/><path d="M20 4 8.2 15.9"/></svg>`;
-const CUT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(CUT_CURSOR_SVG)}") 10 10, crosshair`;
+const CUT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(
+  CUT_CURSOR_SVG
+)}") 10 10, crosshair`;
+
+type TextTrackEditMode = "resize-left" | "resize-right";
+
+type TextTrackEditState = {
+  overlayId: string;
+  mode: TextTrackEditMode;
+  startClientX: number;
+  startSeconds: number;
+  endSeconds: number;
+};
 
 export function ClipTimelineTrackView() {
   const {
@@ -30,6 +53,7 @@ export function ClipTimelineTrackView() {
     selectedTimelineTrack,
     timelineClips,
     audioTimelineClips,
+    textOverlays,
     timelinePlaying,
     timelineToolMode,
     setDraggingAsset,
@@ -38,6 +62,7 @@ export function ClipTimelineTrackView() {
     setTrackTotalDurationSeconds,
     setTimelineClips,
     setAudioTimelineClips,
+    setTextOverlays,
     setSelectedTimelineClip,
     previewTimelineClip,
     previewEmptyFrame,
@@ -50,6 +75,7 @@ export function ClipTimelineTrackView() {
       selectedTimelineTrack: state.selectedTimelineTrack,
       timelineClips: state.timelineClips,
       audioTimelineClips: state.audioTimelineClips,
+      textOverlays: state.textOverlays,
       timelinePlaying: state.timelinePlaying,
       timelineToolMode: state.timelineToolMode,
       setDraggingAsset: state.setDraggingAsset,
@@ -58,6 +84,7 @@ export function ClipTimelineTrackView() {
       setTrackTotalDurationSeconds: state.setTrackTotalDurationSeconds,
       setTimelineClips: state.setTimelineClips,
       setAudioTimelineClips: state.setAudioTimelineClips,
+      setTextOverlays: state.setTextOverlays,
       setSelectedTimelineClip: state.setSelectedTimelineClip,
       previewTimelineClip: state.previewTimelineClip,
       previewEmptyFrame: state.previewEmptyFrame,
@@ -76,6 +103,8 @@ export function ClipTimelineTrackView() {
   });
 
   const audioLaneRef = useRef<HTMLDivElement>(null);
+  const textLaneRef = useRef<HTMLDivElement>(null);
+  const textTrackEditStateRef = useRef<TextTrackEditState | null>(null);
 
   const videoDragAndDrop = useTimelineDragAndDrop({
     clips: timelineClips,
@@ -185,20 +214,261 @@ export function ClipTimelineTrackView() {
     handleSeekMouseDown,
     handlePlayheadMouseDown,
   } = playback;
+  const maxTimelineSeconds =
+    timelineWidthPx / Math.max(pixelsPerSecond, 0.0001);
+  const minTextDurationSeconds =
+    TEXT_TRACK_MIN_BLOCK_WIDTH_PX / Math.max(pixelsPerSecond, 0.0001);
 
   const renderedVideoClips =
     videoDragAndDrop.ripplePreviewClips ?? timelineClips;
   const renderedAudioClips =
     audioDragAndDrop.ripplePreviewClips ?? audioTimelineClips;
+  const textTrackItems = useMemo(
+    () =>
+      textOverlays
+        .map((overlay) => {
+          const durationSeconds = Math.max(
+            0,
+            overlay.endSeconds - overlay.startSeconds
+          );
+          return {
+            id: overlay.id,
+            text: overlay.text.trim() || "文本",
+            startSeconds: Math.max(0, overlay.startSeconds),
+            durationSeconds,
+          };
+        })
+        .filter((overlay) => overlay.durationSeconds > 0),
+    [textOverlays]
+  );
+  const textTrackClips = useMemo<ClipTrackClip[]>(
+    () =>
+      textTrackItems.map((item) => ({
+        id: item.id,
+        assetId: item.id,
+        title: item.text,
+        mediaType: "video" as const,
+        mediaDurationSeconds: item.durationSeconds,
+        startSeconds: item.startSeconds,
+        sourceStartSeconds: 0,
+        sourceEndSeconds: item.durationSeconds,
+        durationSeconds: item.durationSeconds,
+        objectUrl: "",
+      })),
+    [textTrackItems]
+  );
+  const setTextTrackClips = useCallback(
+    (
+      updater:
+        | ClipTrackClip[]
+        | ((prevClips: ClipTrackClip[]) => ClipTrackClip[])
+    ) => {
+      setTextOverlays((prev) => {
+        const prevClips = prev
+          .map((overlay) => {
+            const durationSeconds = Math.max(
+              minTextDurationSeconds,
+              overlay.endSeconds - overlay.startSeconds
+            );
+            return {
+              id: overlay.id,
+              assetId: overlay.id,
+              title: overlay.text.trim() || "文本",
+              mediaType: "video" as const,
+              mediaDurationSeconds: durationSeconds,
+              startSeconds: Math.max(0, overlay.startSeconds),
+              sourceStartSeconds: 0,
+              sourceEndSeconds: durationSeconds,
+              durationSeconds,
+              objectUrl: "",
+            };
+          })
+          .filter((clip) => clip.durationSeconds > 0);
+
+        const nextClips =
+          typeof updater === "function" ? updater(prevClips) : updater;
+        const nextMap = new Map(nextClips.map((clip) => [clip.id, clip]));
+
+        return prev.flatMap((overlay) => {
+          const clip = nextMap.get(overlay.id);
+          if (!clip) {
+            return [];
+          }
+          const startSeconds = Math.max(0, clip.startSeconds);
+          const durationSeconds = Math.max(
+            minTextDurationSeconds,
+            clip.durationSeconds
+          );
+          return [
+            {
+              ...overlay,
+              startSeconds,
+              endSeconds: startSeconds + durationSeconds,
+            },
+          ];
+        });
+      });
+    },
+    [minTextDurationSeconds, setTextOverlays]
+  );
+  const textDragAndDrop = useTimelineDragAndDrop({
+    clips: textTrackClips,
+    setClips: setTextTrackClips,
+    draggingAsset,
+    pixelsPerSecond: playback.pixelsPerSecond,
+    laneRef: textLaneRef,
+    allowAssetInsert: false,
+  });
+  const renderedTextTrackClips =
+    textDragAndDrop.ripplePreviewClips ?? textTrackClips;
+  const textDragPreviewToneClassName = useMemo(() => {
+    if (!textDragAndDrop.draggingClipId) {
+      return "border-[#a78bfa] bg-gradient-to-r from-[#a78bfa]/35 to-[#6366f1]/35";
+    }
+    const index = textTrackClips.findIndex(
+      (clip) => clip.id === textDragAndDrop.draggingClipId
+    );
+    const colorClass =
+      TRACK_COLORS[(index < 0 ? 0 : index) % TRACK_COLORS.length];
+    return `bg-gradient-to-r ${colorClass}`;
+  }, [textDragAndDrop.draggingClipId, textTrackClips]);
   const isAnyDragActive =
     Boolean(draggingAsset) ||
     Boolean(videoDragAndDrop.draggingClipId) ||
-    Boolean(audioDragAndDrop.draggingClipId);
+    Boolean(audioDragAndDrop.draggingClipId) ||
+    Boolean(textDragAndDrop.draggingClipId);
   const { audioRef } = useTimelineAudioPlayback({
     audioClips: renderedAudioClips,
     currentTimeSeconds,
     isPlaying: playback.isPlaying,
   });
+
+  const handleTextTrackEditStart = useCallback(
+    (
+      event: ReactMouseEvent<HTMLElement>,
+      overlayId: string,
+      mode: TextTrackEditMode,
+      startSeconds: number,
+      endSeconds: number
+    ) => {
+      if (timelineToolMode === "cut") {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      textTrackEditStateRef.current = {
+        overlayId,
+        mode,
+        startClientX: event.clientX,
+        startSeconds,
+        endSeconds,
+      };
+      document.body.style.cursor = "ew-resize";
+    },
+    [timelineToolMode]
+  );
+
+  const handleSplitTextOverlayAtTime = useCallback(
+    (overlayId: string, splitTime: number) => {
+      setTextOverlays((prev) => {
+        const target = prev.find((overlay) => overlay.id === overlayId);
+        if (!target) {
+          return prev;
+        }
+        const minGap = minTextDurationSeconds;
+        const clampedSplit = Math.max(
+          target.startSeconds + minGap,
+          Math.min(target.endSeconds - minGap, splitTime)
+        );
+        if (
+          clampedSplit <= target.startSeconds + 0.0001 ||
+          clampedSplit >= target.endSeconds - 0.0001
+        ) {
+          return prev;
+        }
+
+        return prev.flatMap((overlay) => {
+          if (overlay.id !== overlayId) {
+            return [overlay];
+          }
+          return [
+            { ...overlay, endSeconds: clampedSplit },
+            {
+              ...overlay,
+              id: crypto.randomUUID(),
+              startSeconds: clampedSplit,
+            },
+          ];
+        });
+      });
+    },
+    [minTextDurationSeconds, setTextOverlays]
+  );
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      const state = textTrackEditStateRef.current;
+      if (!state) {
+        return;
+      }
+      const deltaSeconds =
+        (event.clientX - state.startClientX) /
+        Math.max(pixelsPerSecond, 0.0001);
+      setTextOverlays((prev) =>
+        prev.map((overlay) => {
+          if (overlay.id !== state.overlayId) {
+            return overlay;
+          }
+
+          if (state.mode === "resize-left") {
+            const maxStart = Math.max(
+              0,
+              state.endSeconds - minTextDurationSeconds
+            );
+            const nextStart = Math.min(
+              maxStart,
+              Math.max(0, state.startSeconds + deltaSeconds)
+            );
+            return {
+              ...overlay,
+              startSeconds: nextStart,
+            };
+          }
+
+          const minEnd = state.startSeconds + minTextDurationSeconds;
+          const nextEnd = Math.max(
+            minEnd,
+            Math.min(maxTimelineSeconds, state.endSeconds + deltaSeconds)
+          );
+          return {
+            ...overlay,
+            endSeconds: nextEnd,
+          };
+        })
+      );
+    };
+
+    const handleMouseUp = () => {
+      if (!textTrackEditStateRef.current) {
+        return;
+      }
+      textTrackEditStateRef.current = null;
+      document.body.style.cursor = "";
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+    };
+  }, [
+    maxTimelineSeconds,
+    minTextDurationSeconds,
+    pixelsPerSecond,
+    setTextOverlays,
+  ]);
 
   const {
     handleSelectTool,
@@ -220,6 +490,17 @@ export function ClipTimelineTrackView() {
     onSplitAudioClipAtTime: audioClipEditing.splitClipByIdAtTime,
     onSeekClick: handleSeekClick,
   });
+
+  const noopClipResizeStart = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    []
+  );
+  const noopClipClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+  }, []);
 
   return (
     <>
@@ -247,7 +528,8 @@ export function ClipTimelineTrackView() {
       >
         <div className="w-20 shrink-0 pr-3 text-xs text-[#9ca3af]">
           <div className="h-[52px]" aria-hidden="true" />
-          <div className="flex h-16 items-center">视频轨道1</div>
+          <div className="flex h-6 items-center">文本轨道1</div>
+          <div className="mt-2 flex h-16 items-center">视频轨道1</div>
           <div className="mt-2 flex h-6 items-center">音频轨道1</div>
         </div>
 
@@ -267,6 +549,81 @@ export function ClipTimelineTrackView() {
               />
 
               <div className="space-y-2">
+                <ClipTimelineLane
+                  laneRef={textLaneRef}
+                  laneId="text-1"
+                  laneHeightClassName="h-5"
+                  laneClassName="border border-dashed border-white/12 bg-white/[0.015]"
+                  styleBackgroundImage="repeating-linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 1px, transparent 1px, transparent 100%), repeating-linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05) 1px, transparent 1px, transparent 100%)"
+                  emptyHint="暂无文本"
+                  clips={renderedTextTrackClips}
+                  compact
+                  selectedClipIds={[]}
+                  timelineToolMode={timelineToolMode}
+                  draggingClipId={textDragAndDrop.draggingClipId}
+                  resizingClipId={null}
+                  dragPreview={textDragAndDrop.dragPreview}
+                  pixelsPerSecond={pixelsPerSecond}
+                  timelineWidthPx={timelineWidthPx}
+                  majorGridWidth={majorGridWidth}
+                  minorGridWidth={minorGridWidth}
+                  viewportStartPx={scrollLeft}
+                  viewportWidthPx={trackViewportWidth}
+                  onTrackClick={handleTrackClick}
+                  onTrackDragOver={textDragAndDrop.handleTrackDragOver}
+                  onTrackDragLeave={textDragAndDrop.handleTrackDragLeave}
+                  onTrackDrop={textDragAndDrop.handleTrackDrop}
+                  onClipClick={noopClipClick}
+                  onClipDragStart={textDragAndDrop.handleClipDragStart}
+                  onClipDragEnd={textDragAndDrop.handleClipDragEnd}
+                  onClipLeftResizeStart={noopClipResizeStart}
+                  onClipResizeStart={noopClipResizeStart}
+                  dragPreviewLayoutClassName="top-0 h-4.5 px-1 py-0"
+                  dragPreviewToneClassName={textDragPreviewToneClassName}
+                  renderClip={(clip, index) => {
+                    return (
+                      <ClipTimelineTextClipItem
+                        key={clip.id}
+                        clip={clip}
+                        index={index}
+                        pixelsPerSecond={pixelsPerSecond}
+                        minWidthPx={TEXT_TRACK_MIN_BLOCK_WIDTH_PX}
+                        timelineToolMode={timelineToolMode}
+                        onDragStart={textDragAndDrop.handleClipDragStart}
+                        onDragEnd={textDragAndDrop.handleClipDragEnd}
+                        onSplitAtClientX={(targetClip, clientX, rectLeft) => {
+                          const clickedOffsetPx = clientX - rectLeft;
+                          const splitTime =
+                            targetClip.startSeconds +
+                            clickedOffsetPx / Math.max(pixelsPerSecond, 0.0001);
+                          handleSplitTextOverlayAtTime(
+                            targetClip.id,
+                            splitTime
+                          );
+                        }}
+                        onResizeLeftStart={(event, targetClip) =>
+                          handleTextTrackEditStart(
+                            event,
+                            targetClip.id,
+                            "resize-left",
+                            targetClip.startSeconds,
+                            targetClip.startSeconds + targetClip.durationSeconds
+                          )
+                        }
+                        onResizeRightStart={(event, targetClip) =>
+                          handleTextTrackEditStart(
+                            event,
+                            targetClip.id,
+                            "resize-right",
+                            targetClip.startSeconds,
+                            targetClip.startSeconds + targetClip.durationSeconds
+                          )
+                        }
+                      />
+                    );
+                  }}
+                />
+
                 <ClipTimelineLane
                   laneRef={laneRef}
                   laneId="video-1"

@@ -3,6 +3,7 @@ import {
   useMemo,
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
   type RefObject,
 } from "react";
 import { MIN_CLIP_WIDTH } from "./clipTimelineConfig";
@@ -58,6 +59,9 @@ type ClipTimelineLaneProps = {
     event: ReactMouseEvent<HTMLElement>,
     clip: ClipTrackClip
   ) => void;
+  renderClip?: (clip: ClipTrackClip, index: number) => ReactNode;
+  dragPreviewLayoutClassName?: string;
+  dragPreviewToneClassName?: string;
 };
 
 export const ClipTimelineLane = memo(function ClipTimelineLane({
@@ -89,6 +93,9 @@ export const ClipTimelineLane = memo(function ClipTimelineLane({
   onClipDragEnd,
   onClipLeftResizeStart,
   onClipResizeStart,
+  renderClip,
+  dragPreviewLayoutClassName,
+  dragPreviewToneClassName,
 }: ClipTimelineLaneProps) {
   const visibleClips = useMemo(() => {
     if (
@@ -105,7 +112,8 @@ export const ClipTimelineLane = memo(function ClipTimelineLane({
 
     return clips.filter((clip) => {
       const clipStartX = clip.startSeconds * pixelsPerSecond;
-      const clipEndX = clipStartX + Math.max(clip.durationSeconds * pixelsPerSecond, 1);
+      const clipEndX =
+        clipStartX + Math.max(clip.durationSeconds * pixelsPerSecond, 1);
       return clipEndX >= minX && clipStartX <= maxX;
     });
   }, [clips, pixelsPerSecond, viewportStartPx, viewportWidthPx]);
@@ -140,30 +148,38 @@ export const ClipTimelineLane = memo(function ClipTimelineLane({
         </div>
       ) : null}
 
-      {visibleClips.map((clip) => (
-        <ClipTimelineClipItem
-          key={clip.id}
-          clip={clip}
-          index={clipIndexById.get(clip.id) ?? 0}
-          compact={compact}
-          pixelsPerSecond={pixelsPerSecond}
-          selectedClipIds={selectedClipIds}
-          timelineToolMode={timelineToolMode}
-          draggingClipId={draggingClipId}
-          resizingClipId={resizingClipId}
-          onClipClick={onClipClick}
-          onClipDragStart={onClipDragStart}
-          onClipDragEnd={onClipDragEnd}
-          onClipLeftResizeStart={onClipLeftResizeStart}
-          onClipResizeStart={onClipResizeStart}
-        />
-      ))}
+      {visibleClips.map((clip) => {
+        const index = clipIndexById.get(clip.id) ?? 0;
+        if (renderClip) {
+          return renderClip(clip, index);
+        }
+        return (
+          <ClipTimelineClipItem
+            key={clip.id}
+            clip={clip}
+            index={index}
+            compact={compact}
+            pixelsPerSecond={pixelsPerSecond}
+            selectedClipIds={selectedClipIds}
+            timelineToolMode={timelineToolMode}
+            draggingClipId={draggingClipId}
+            resizingClipId={resizingClipId}
+            onClipClick={onClipClick}
+            onClipDragStart={onClipDragStart}
+            onClipDragEnd={onClipDragEnd}
+            onClipLeftResizeStart={onClipLeftResizeStart}
+            onClipResizeStart={onClipResizeStart}
+          />
+        );
+      })}
 
       {dragPreview ? (
         <ClipTimelineDragPreviewItem
           dragPreview={dragPreview}
           pixelsPerSecond={pixelsPerSecond}
           compact={compact}
+          layoutClassName={dragPreviewLayoutClassName}
+          toneClassName={dragPreviewToneClassName}
         />
       ) : null}
     </div>
