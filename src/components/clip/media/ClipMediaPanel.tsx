@@ -58,8 +58,12 @@ export function ClipMediaPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlSetRef = useRef(new Set<string>());
   const dragGhostRef = useRef<HTMLElement | null>(null);
+  const cardGhostRef = useRef<HTMLElement | null>(null);
+  const trackGhostRef = useRef<HTMLElement | null>(null);
   const draggingAssetRef = useRef<ClipDragAsset | null>(null);
   const dragGhostModeRef = useRef<"card" | "track">("card");
+  const dragGhostFrameRef = useRef<number | null>(null);
+  const dragGhostPendingPosRef = useRef<{ x: number; y: number } | null>(null);
   const transparentDragImageRef = useRef<HTMLCanvasElement | null>(null);
   const [assets, setAssets] = useState<ClipMediaAsset[]>([]);
   const [isParsing, setIsParsing] = useState(false);
@@ -82,10 +86,36 @@ export function ClipMediaPanel() {
         dragGhostRef.current.remove();
         dragGhostRef.current = null;
       }
+      cardGhostRef.current?.remove();
+      trackGhostRef.current?.remove();
+      cardGhostRef.current = null;
+      trackGhostRef.current = null;
     };
   }, []);
 
+  const scheduleGhostPosition = useCallback((x: number, y: number) => {
+    dragGhostPendingPosRef.current = { x, y };
+    if (dragGhostFrameRef.current !== null) {
+      return;
+    }
+
+    dragGhostFrameRef.current = window.requestAnimationFrame(() => {
+      dragGhostFrameRef.current = null;
+      const pendingPos = dragGhostPendingPosRef.current;
+      const ghost = dragGhostRef.current;
+      if (!pendingPos || !ghost) {
+        return;
+      }
+      ghost.style.transform = `translate3d(${pendingPos.x}px, ${pendingPos.y}px, 0)`;
+    });
+  }, []);
+
   const clearDragGhost = useCallback(() => {
+    if (dragGhostFrameRef.current !== null) {
+      window.cancelAnimationFrame(dragGhostFrameRef.current);
+      dragGhostFrameRef.current = null;
+    }
+    dragGhostPendingPosRef.current = null;
     if (dragGhostRef.current) {
       dragGhostRef.current.remove();
       dragGhostRef.current = null;
@@ -103,7 +133,7 @@ export function ClipMediaPanel() {
 
       const x = event.clientX + 14;
       const y = event.clientY + 14;
-      ghost.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      scheduleGhostPosition(x, y);
 
       const element = document.elementFromPoint(event.clientX, event.clientY);
       const trackLane =
@@ -123,12 +153,14 @@ export function ClipMediaPanel() {
         const trackGhost = createTrackBlockGhost(
           asset,
           pixelsPerSecond,
-          minClipWidth
+          minClipWidth,
+          trackGhostRef.current
         );
+        trackGhostRef.current = trackGhost;
         document.body.appendChild(trackGhost);
         dragGhostRef.current = trackGhost;
         dragGhostModeRef.current = "track";
-        trackGhost.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        scheduleGhostPosition(x, y);
       }
 
       if (!isOverTrackLane && dragGhostModeRef.current !== "card") {
@@ -137,11 +169,12 @@ export function ClipMediaPanel() {
           return;
         }
         ghost.remove();
-        const cardGhost = createCardDragGhost(asset);
-        cardGhost.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        const cardGhost = createCardDragGhost(asset, cardGhostRef.current);
+        cardGhostRef.current = cardGhost;
         document.body.appendChild(cardGhost);
         dragGhostRef.current = cardGhost;
         dragGhostModeRef.current = "card";
+        scheduleGhostPosition(x, y);
       }
     };
 
@@ -162,7 +195,7 @@ export function ClipMediaPanel() {
       window.removeEventListener("drop", handleWindowDrop);
       window.removeEventListener("dragend", handleWindowDragEnd);
     };
-  }, [clearDragGhost]);
+  }, [clearDragGhost, scheduleGhostPosition]);
 
   const handleImportMedia = useCallback(async (files: File[]) => {
     const mediaFiles = files.filter(
@@ -244,7 +277,8 @@ export function ClipMediaPanel() {
       audioLevels: asset.audioLevels,
     };
     clearDragGhost();
-    const ghost = createCardDragGhost(dragAsset);
+    const ghost = createCardDragGhost(dragAsset, cardGhostRef.current);
+    cardGhostRef.current = ghost;
     draggingAssetRef.current = dragAsset;
     dragGhostModeRef.current = "card";
     document.body.appendChild(ghost);
