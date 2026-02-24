@@ -20,7 +20,11 @@ type ClipTimelineClipItemProps = {
   selectedClipIds?: string[];
   draggingClipId: string | null;
   resizingClipId: string | null;
-  onClipClick: (clip: ClipTrackClip, appendSelection: boolean) => void;
+  onClipClick: (
+    event: ReactMouseEvent<HTMLElement>,
+    clip: ClipTrackClip,
+    appendSelection: boolean
+  ) => void;
   onClipDragStart: (
     event: ReactDragEvent<HTMLElement>,
     clip: ClipTrackClip
@@ -108,7 +112,7 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
       draggable
       onClick={(event) => {
         event.stopPropagation();
-        onClipClick(clip, event.metaKey || event.ctrlKey);
+        onClipClick(event, clip, event.metaKey || event.ctrlKey);
       }}
       onDragStart={(event) => onClipDragStart(event, clip)}
       onDragEnd={onClipDragEnd}

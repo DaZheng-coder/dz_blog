@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useClipEditorStore } from "../store/clipEditorStore";
+import cutCursorUrl from "../../../assets/clip.svg";
 import { ClipTimelineLane } from "./ClipTimelineLane";
 import { ClipTimelinePlayhead } from "./ClipTimelinePlayhead";
 import { ClipTimelineRuler } from "./ClipTimelineRuler";
@@ -35,9 +36,13 @@ export function ClipTimelineTrackView() {
     (state) => state.audioTimelineClips
   );
   const timelinePlaying = useClipEditorStore((state) => state.timelinePlaying);
+  const timelineToolMode = useClipEditorStore((state) => state.timelineToolMode);
   const setDraggingAsset = useClipEditorStore((state) => state.setDraggingAsset);
   const setTimelinePlaying = useClipEditorStore(
     (state) => state.setTimelinePlaying
+  );
+  const setTimelineToolMode = useClipEditorStore(
+    (state) => state.setTimelineToolMode
   );
   const setTrackTotalDurationSeconds = useClipEditorStore(
     (state) => state.setTrackTotalDurationSeconds
@@ -205,17 +210,23 @@ export function ClipTimelineTrackView() {
   });
 
   const {
-    handleSplitSelected,
+    handleSelectTool,
+    handleCutTool,
     handleTrackClick,
     handleVideoClipClick,
     handleAudioClipClick,
   } = useTimelineSelectionActions({
+    timelineToolMode,
     selectedTimelineTrack,
     selectedTimelineClipCount: selectedTimelineClipIds.length,
+    pixelsPerSecond,
+    setTimelineToolMode,
     setSelectedTimelineClip,
     previewTimelineClip,
     onSplitVideo: videoClipEditing.splitSelectedClipAtPlayhead,
     onSplitAudio: audioClipEditing.splitSelectedClipAtPlayhead,
+    onSplitVideoClipAtTime: videoClipEditing.splitClipByIdAtTime,
+    onSplitAudioClipAtTime: audioClipEditing.splitClipByIdAtTime,
     onSeekClick: handleSeekClick,
   });
 
@@ -223,15 +234,25 @@ export function ClipTimelineTrackView() {
     <>
       <audio ref={audioRef} className="hidden" preload="auto" />
       <ClipTimelineToolbar
+        timelineToolMode={timelineToolMode}
         currentTimeSeconds={currentTimeSeconds}
         pixelsPerSecond={pixelsPerSecond}
         minZoom={minZoom}
         maxZoom={maxZoom}
-        onSplitSelected={handleSplitSelected}
+        onSelectTool={handleSelectTool}
+        onCutTool={handleCutTool}
         setPixelsPerSecond={setPixelsPerSecond}
       />
 
-      <div className="min-h-0 flex flex-1 items-stretch px-4 select-none">
+      <div
+        className="min-h-0 flex flex-1 items-stretch px-4 select-none"
+        style={{
+          cursor:
+            timelineToolMode === "cut"
+              ? `url(${cutCursorUrl}) 8 8, crosshair`
+              : "default",
+        }}
+      >
         <div className="w-20 shrink-0 pr-3 text-xs text-[#9ca3af]">
           <div className="h-[52px]" aria-hidden="true" />
           <div className="flex h-16 items-center">视频轨道1</div>

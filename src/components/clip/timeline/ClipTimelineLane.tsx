@@ -39,7 +39,11 @@ type ClipTimelineLaneProps = {
   onTrackDragOver: (event: ReactDragEvent<HTMLDivElement>) => void;
   onTrackDragLeave: (event: ReactDragEvent<HTMLDivElement>) => void;
   onTrackDrop: (event: ReactDragEvent<HTMLDivElement>) => void;
-  onClipClick: (clip: ClipTrackClip, appendSelection: boolean) => void;
+  onClipClick: (
+    event: ReactMouseEvent<HTMLElement>,
+    clip: ClipTrackClip,
+    appendSelection: boolean
+  ) => void;
   onClipDragStart: (
     event: ReactDragEvent<HTMLElement>,
     clip: ClipTrackClip

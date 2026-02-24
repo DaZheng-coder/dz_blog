@@ -50,6 +50,63 @@ export function useTimelineClipEditing({
 }: UseTimelineClipEditingOptions) {
   const [resizingClipId, setResizingClipId] = useState<string | null>(null);
 
+  const splitClipByIdAtTime = useCallback(
+    (targetClipId: string, splitTime: number) => {
+      let rightClipForPreview: ClipTrackClip | null = null;
+      let didSplit = false;
+
+      setClips((prev) => {
+        const next = [...prev];
+        for (let index = 0; index < next.length; index += 1) {
+          const clip = next[index];
+          if (clip.id !== targetClipId) {
+            continue;
+          }
+
+          const clipStart = clip.startSeconds;
+          const clipEnd = clip.startSeconds + clip.durationSeconds;
+          if (splitTime <= clipStart || splitTime >= clipEnd) {
+            continue;
+          }
+
+          const leftDurationSeconds = splitTime - clipStart;
+          const rightDurationSeconds = clipEnd - splitTime;
+          if (leftDurationSeconds <= 0 || rightDurationSeconds <= 0) {
+            continue;
+          }
+
+          const leftClip: ClipTrackClip = {
+            ...clip,
+            durationSeconds: leftDurationSeconds,
+            sourceEndSeconds: clip.sourceStartSeconds + leftDurationSeconds,
+          };
+          const rightClip: ClipTrackClip = {
+            ...clip,
+            id: crypto.randomUUID(),
+            startSeconds: splitTime,
+            sourceStartSeconds: clip.sourceStartSeconds + leftDurationSeconds,
+            sourceEndSeconds: clip.sourceEndSeconds,
+            durationSeconds: rightDurationSeconds,
+          };
+
+          didSplit = true;
+          rightClipForPreview = rightClip;
+          next.splice(index, 1, leftClip, rightClip);
+          break;
+        }
+        return didSplit ? next : prev;
+      });
+
+      if (!didSplit || !rightClipForPreview) {
+        return;
+      }
+
+      onPreviewClip?.(rightClipForPreview);
+      emitTimelineFrame(splitTime, isPlaying, true);
+    },
+    [emitTimelineFrame, isPlaying, onPreviewClip, setClips]
+  );
+
   const handleClipResizeStart = (
     event: ReactMouseEvent<HTMLElement>,
     clip: ClipTrackClip
@@ -222,7 +279,6 @@ export function useTimelineClipEditing({
         if (!isTargetClip) {
           continue;
         }
-
         const clipStart = clip.startSeconds;
         const clipEnd = clip.startSeconds + clip.durationSeconds;
         if (splitTime <= clipStart || splitTime >= clipEnd) {
@@ -324,6 +380,7 @@ export function useTimelineClipEditing({
     handleClipResizeStart,
     handleClipLeftResizeStart,
     splitSelectedClipAtPlayhead,
+    splitClipByIdAtTime,
     deleteSelectedClip,
   };
 }

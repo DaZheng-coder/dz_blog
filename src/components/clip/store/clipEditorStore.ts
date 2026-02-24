@@ -24,6 +24,7 @@ type ClipEditorStore = {
   selectedTimelineTrack: "video" | "audio" | null;
   previewSource: ClipPreviewSource | null;
   timelinePlaying: boolean;
+  timelineToolMode: "select" | "cut";
   trackTotalDurationSeconds: number;
   setDraggingAsset: (asset: ClipDragAsset | null) => void;
   setTimelineClips: (
@@ -42,6 +43,7 @@ type ClipEditorStore = {
     appendSelection?: boolean
   ) => void;
   setTimelinePlaying: (playing: boolean) => void;
+  setTimelineToolMode: (mode: "select" | "cut") => void;
   setTrackTotalDurationSeconds: (durationSeconds: number) => void;
   previewTimelineClip: (clip: ClipTrackClip) => void;
   previewEmptyFrame: (timeSeconds: number) => void;
@@ -57,6 +59,7 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
   selectedTimelineTrack: null,
   previewSource: null,
   timelinePlaying: false,
+  timelineToolMode: "select",
   trackTotalDurationSeconds: 0,
   setDraggingAsset: (asset) => set({ draggingAsset: asset }),
   setTimelineClips: (updater) =>
@@ -101,6 +104,7 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
       };
     }),
   setTimelinePlaying: (playing) => set({ timelinePlaying: playing }),
+  setTimelineToolMode: (mode) => set({ timelineToolMode: mode }),
   setTrackTotalDurationSeconds: (durationSeconds) =>
     set({ trackTotalDurationSeconds: durationSeconds }),
   previewTimelineClip: (clip) =>

@@ -8,20 +8,24 @@ import IncreaseIcon from "../../../assets/increase.svg?react";
 import DecreaseIcon from "../../../assets/decrease.svg?react";
 
 type ClipTimelineToolbarProps = {
+  timelineToolMode: "select" | "cut";
   currentTimeSeconds: number;
   pixelsPerSecond: number;
   minZoom: number;
   maxZoom: number;
-  onSplitSelected: () => void;
+  onSelectTool: () => void;
+  onCutTool: () => void;
   setPixelsPerSecond: (next: SetStateAction<number>) => void;
 };
 
 export function ClipTimelineToolbar({
+  timelineToolMode,
   currentTimeSeconds,
   pixelsPerSecond,
   minZoom,
   maxZoom,
-  onSplitSelected,
+  onSelectTool,
+  onCutTool,
   setPixelsPerSecond,
 }: ClipTimelineToolbarProps) {
   const zoomPercent = Math.round((pixelsPerSecond / DEFAULT_ZOOM) * 100);
@@ -36,16 +40,29 @@ export function ClipTimelineToolbar({
         <span>缩放 {zoomPercent}%</span>
       </div>
       <div className="flex items-center gap-2">
-        <button className={timelineZoomButtonClass} onClick={onSplitSelected}>
-          <PointerIcon className="h-4 w-4 fill-current" />
+        <button
+          className={timelineZoomButtonClass}
+          aria-label="选择工具"
+          onClick={onSelectTool}
+        >
+          <PointerIcon
+            className={`h-4 w-4 fill-current ${
+              timelineToolMode === "select" ? "text-[#67e8f9]" : "text-white"
+            }`}
+          />
         </button>
         <button
           className={timelineZoomButtonClass}
           aria-label="切割工具"
-          onClick={onSplitSelected}
+          onClick={onCutTool}
         >
-          <ClipIcon className="h-4 w-4 fill-current" />
+          <ClipIcon
+            className={`h-4 w-4 fill-current ${
+              timelineToolMode === "cut" ? "text-[#67e8f9]" : "text-white"
+            }`}
+          />
         </button>
+        <div className="h-5 w-[1px] bg-white/10 mx-2"></div>
         <button
           className={timelineZoomButtonClass}
           onClick={() =>
