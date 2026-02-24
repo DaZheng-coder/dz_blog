@@ -18,6 +18,7 @@ type ClipTimelineClipItemProps = {
   compact?: boolean;
   pixelsPerSecond: number;
   selectedClipIds?: string[];
+  timelineToolMode: "select" | "cut";
   draggingClipId: string | null;
   resizingClipId: string | null;
   onClipClick: (
@@ -46,6 +47,7 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
   compact = false,
   pixelsPerSecond,
   selectedClipIds,
+  timelineToolMode,
   draggingClipId,
   resizingClipId,
   onClipClick,
@@ -54,6 +56,7 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
   onClipLeftResizeStart,
   onClipResizeStart,
 }: ClipTimelineClipItemProps) {
+  const isCutMode = timelineToolMode === "cut";
   const clipWidth = useMemo(
     () => Math.max(clip.durationSeconds * pixelsPerSecond, MIN_RENDER_WIDTH_PX),
     [clip.durationSeconds, pixelsPerSecond]
@@ -109,14 +112,20 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
 
   return (
     <article
-      draggable
+      draggable={!isCutMode}
       onClick={(event) => {
         event.stopPropagation();
         onClipClick(event, clip, event.metaKey || event.ctrlKey);
       }}
-      onDragStart={(event) => onClipDragStart(event, clip)}
+      onDragStart={(event) => {
+        if (isCutMode) {
+          event.preventDefault();
+          return;
+        }
+        onClipDragStart(event, clip);
+      }}
       onDragEnd={onClipDragEnd}
-      className={`absolute left-0 cursor-grab rounded-md border bg-gradient-to-r text-xs text-white will-change-transform ${blockClass} ${
+      className={`absolute left-0 rounded-md border bg-gradient-to-r text-xs text-white will-change-transform ${blockClass} ${
         TRACK_COLORS[index % TRACK_COLORS.length]
       } ${selectedClipIds?.includes(clip.id) ? "ring-2 ring-[#67e8f9]" : ""} ${
         draggingClipId === clip.id ? "opacity-60" : "opacity-100"
@@ -124,6 +133,7 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
       style={{
         transform: `translate3d(${clipX}px, 0, 0)`,
         width: `${clipWidth}px`,
+        cursor: isCutMode ? "inherit" : "grab",
       }}
     >
       {hasVideoFrames ? (
@@ -168,9 +178,18 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
             ? "bg-[#67e8f9]/40"
             : "bg-white/15 hover:bg-[#67e8f9]/30"
         }`}
-        onMouseDown={(event) => onClipLeftResizeStart(event, clip)}
+        onMouseDown={(event) => {
+          if (isCutMode) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          onClipLeftResizeStart(event, clip);
+        }}
         onClick={(event) => event.stopPropagation()}
         aria-label="调整片段起始"
+        disabled={isCutMode}
+        style={{ cursor: isCutMode ? "inherit" : "ew-resize" }}
       />
       <p
         className={`${titleClass} relative z-10 ${
@@ -193,9 +212,18 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
             ? "bg-[#67e8f9]/40"
             : "bg-white/15 hover:bg-[#67e8f9]/30"
         }`}
-        onMouseDown={(event) => onClipResizeStart(event, clip)}
+        onMouseDown={(event) => {
+          if (isCutMode) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          onClipResizeStart(event, clip);
+        }}
         onClick={(event) => event.stopPropagation()}
         aria-label="调整片段时长"
+        disabled={isCutMode}
+        style={{ cursor: isCutMode ? "inherit" : "ew-resize" }}
       />
     </article>
   );

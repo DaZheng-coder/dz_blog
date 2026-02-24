@@ -177,6 +177,11 @@ body {
   overflow: hidden;
 }
 
+.timeline-cut-mode,
+.timeline-cut-mode * {
+  cursor: var(--timeline-cut-cursor, crosshair) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-enter,
   .reveal-on-view,

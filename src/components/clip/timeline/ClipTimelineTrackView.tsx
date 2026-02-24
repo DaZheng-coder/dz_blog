@@ -1,6 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { useClipEditorStore } from "../store/clipEditorStore";
-import cutCursorUrl from "../../../assets/clip.svg";
 import { ClipTimelineLane } from "./ClipTimelineLane";
 import { ClipTimelinePlayhead } from "./ClipTimelinePlayhead";
 import { ClipTimelineRuler } from "./ClipTimelineRuler";
@@ -19,6 +18,8 @@ export type TimelineDragPreview = {
 };
 
 const TIMELINE_LEFT_INSET_PX = 20;
+const CUT_CURSOR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8.2 8.1 20 20"/><path d="M20 4 8.2 15.9"/></svg>`;
+const CUT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(CUT_CURSOR_SVG)}") 10 10, crosshair`;
 
 export function ClipTimelineTrackView() {
   const draggingAsset = useClipEditorStore((state) => state.draggingAsset);
@@ -36,8 +37,12 @@ export function ClipTimelineTrackView() {
     (state) => state.audioTimelineClips
   );
   const timelinePlaying = useClipEditorStore((state) => state.timelinePlaying);
-  const timelineToolMode = useClipEditorStore((state) => state.timelineToolMode);
-  const setDraggingAsset = useClipEditorStore((state) => state.setDraggingAsset);
+  const timelineToolMode = useClipEditorStore(
+    (state) => state.timelineToolMode
+  );
+  const setDraggingAsset = useClipEditorStore(
+    (state) => state.setDraggingAsset
+  );
   const setTimelinePlaying = useClipEditorStore(
     (state) => state.setTimelinePlaying
   );
@@ -47,7 +52,9 @@ export function ClipTimelineTrackView() {
   const setTrackTotalDurationSeconds = useClipEditorStore(
     (state) => state.setTrackTotalDurationSeconds
   );
-  const setTimelineClips = useClipEditorStore((state) => state.setTimelineClips);
+  const setTimelineClips = useClipEditorStore(
+    (state) => state.setTimelineClips
+  );
   const setAudioTimelineClips = useClipEditorStore(
     (state) => state.setAudioTimelineClips
   );
@@ -57,8 +64,12 @@ export function ClipTimelineTrackView() {
   const previewTimelineClip = useClipEditorStore(
     (state) => state.previewTimelineClip
   );
-  const previewEmptyFrame = useClipEditorStore((state) => state.previewEmptyFrame);
-  const syncTimelineFrame = useClipEditorStore((state) => state.syncTimelineFrame);
+  const previewEmptyFrame = useClipEditorStore(
+    (state) => state.previewEmptyFrame
+  );
+  const syncTimelineFrame = useClipEditorStore(
+    (state) => state.syncTimelineFrame
+  );
 
   const playback = useTimelinePlayback({
     clips: timelineClips,
@@ -245,13 +256,14 @@ export function ClipTimelineTrackView() {
       />
 
       <div
-        className="min-h-0 flex flex-1 items-stretch px-4 select-none"
-        style={{
-          cursor:
-            timelineToolMode === "cut"
-              ? `url(${cutCursorUrl}) 8 8, crosshair`
-              : "default",
-        }}
+        className={`min-h-0 flex flex-1 items-stretch px-4 select-none ${
+          timelineToolMode === "cut" ? "timeline-cut-mode" : ""
+        }`}
+        style={
+          timelineToolMode === "cut"
+            ? ({ "--timeline-cut-cursor": CUT_CURSOR } as CSSProperties)
+            : undefined
+        }
       >
         <div className="w-20 shrink-0 pr-3 text-xs text-[#9ca3af]">
           <div className="h-[52px]" aria-hidden="true" />
@@ -284,6 +296,7 @@ export function ClipTimelineTrackView() {
                   emptyHint="从素材库拖拽视频到此轨道"
                   clips={renderedVideoClips}
                   selectedClipIds={selectedTimelineClipIds}
+                  timelineToolMode={timelineToolMode}
                   draggingClipId={videoDragAndDrop.draggingClipId}
                   resizingClipId={videoClipEditing.resizingClipId}
                   dragPreview={videoDragAndDrop.dragPreview}
@@ -300,7 +313,9 @@ export function ClipTimelineTrackView() {
                   onClipClick={handleVideoClipClick}
                   onClipDragStart={videoDragAndDrop.handleClipDragStart}
                   onClipDragEnd={videoDragAndDrop.handleClipDragEnd}
-                  onClipLeftResizeStart={videoClipEditing.handleClipLeftResizeStart}
+                  onClipLeftResizeStart={
+                    videoClipEditing.handleClipLeftResizeStart
+                  }
                   onClipResizeStart={videoClipEditing.handleClipResizeStart}
                 />
 
@@ -314,6 +329,7 @@ export function ClipTimelineTrackView() {
                   clips={renderedAudioClips}
                   compact
                   selectedClipIds={selectedTimelineClipIds}
+                  timelineToolMode={timelineToolMode}
                   draggingClipId={audioDragAndDrop.draggingClipId}
                   resizingClipId={audioClipEditing.resizingClipId}
                   dragPreview={audioDragAndDrop.dragPreview}
@@ -330,7 +346,9 @@ export function ClipTimelineTrackView() {
                   onClipClick={handleAudioClipClick}
                   onClipDragStart={audioDragAndDrop.handleClipDragStart}
                   onClipDragEnd={audioDragAndDrop.handleClipDragEnd}
-                  onClipLeftResizeStart={audioClipEditing.handleClipLeftResizeStart}
+                  onClipLeftResizeStart={
+                    audioClipEditing.handleClipLeftResizeStart
+                  }
                   onClipResizeStart={audioClipEditing.handleClipResizeStart}
                 />
               </div>

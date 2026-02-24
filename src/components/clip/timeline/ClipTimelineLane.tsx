@@ -26,6 +26,7 @@ type ClipTimelineLaneProps = {
   clips: ClipTrackClip[];
   compact?: boolean;
   selectedClipIds: string[];
+  timelineToolMode: "select" | "cut";
   draggingClipId: string | null;
   resizingClipId: string | null;
   dragPreview: TimelineDragPreview | null;
@@ -69,6 +70,7 @@ export const ClipTimelineLane = memo(function ClipTimelineLane({
   clips,
   compact = false,
   selectedClipIds,
+  timelineToolMode,
   draggingClipId,
   resizingClipId,
   dragPreview,
@@ -146,6 +148,7 @@ export const ClipTimelineLane = memo(function ClipTimelineLane({
           compact={compact}
           pixelsPerSecond={pixelsPerSecond}
           selectedClipIds={selectedClipIds}
+          timelineToolMode={timelineToolMode}
           draggingClipId={draggingClipId}
           resizingClipId={resizingClipId}
           onClipClick={onClipClick}
