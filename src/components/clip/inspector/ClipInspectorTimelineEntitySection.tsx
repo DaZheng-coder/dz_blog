@@ -32,7 +32,7 @@ function InspectorNumberInputRow({
             Math.max(min, Math.min(max, Number(event.target.value) || min))
           )
         }
-        className="w-20 rounded border border-white/15 bg-white/5 px-2 pr-6 py-1 text-right text-xs text-white outline-none focus:border-[#22d3ee]/70"
+        className="w-20 rounded border border-white/15 bg-white/5 px-2 pr-2 py-1 text-right text-xs text-white outline-none focus:border-[#22d3ee]/70"
       />
     </label>
   );
@@ -48,7 +48,10 @@ type ClipInspectorTimelineEntitySectionProps = {
   onUpdateTextOverlayStyle: (
     overlayId: string,
     patch: Partial<
-      Pick<ClipTextOverlay, "fontSize" | "letterSpacing" | "lineHeight" | "color">
+      Pick<
+        ClipTextOverlay,
+        "fontSize" | "letterSpacing" | "lineHeight" | "color"
+      >
     >
   ) => void;
 };
@@ -64,7 +67,9 @@ export function ClipInspectorTimelineEntitySection({
         <div className="flex items-center justify-between gap-3">
           <span className="text-[#cbd5e1]">标题</span>
           <span className="max-w-[70%] truncate rounded bg-white/10 px-2 py-0.5 text-white">
-            {entity.kind === "text" ? entity.overlay.text || "文本" : entity.clip.title}
+            {entity.kind === "text"
+              ? entity.overlay.text || "文本"
+              : entity.clip.title}
           </span>
         </div>
         <div className="flex items-center justify-between">
@@ -73,15 +78,17 @@ export function ClipInspectorTimelineEntitySection({
             {entity.kind === "video"
               ? "视频轨道"
               : entity.kind === "audio"
-                ? "音频轨道"
-                : "文本轨道"}
+              ? "音频轨道"
+              : "文本轨道"}
           </span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-[#cbd5e1]">开始时间</span>
           <span className="rounded bg-white/10 px-2 py-0.5 text-white">
             {formatDuration(
-              entity.kind === "text" ? entity.overlay.startSeconds : entity.clip.startSeconds
+              entity.kind === "text"
+                ? entity.overlay.startSeconds
+                : entity.clip.startSeconds
             )}
           </span>
         </div>
@@ -99,7 +106,8 @@ export function ClipInspectorTimelineEntitySection({
           <div className="flex items-center justify-between">
             <span className="text-[#cbd5e1]">源片段区间</span>
             <span className="rounded bg-white/10 px-2 py-0.5 text-white">
-              {formatDuration(entity.clip.sourceStartSeconds)} ~ {formatDuration(entity.clip.sourceEndSeconds)}
+              {formatDuration(entity.clip.sourceStartSeconds)} ~{" "}
+              {formatDuration(entity.clip.sourceEndSeconds)}
             </span>
           </div>
         ) : (
@@ -137,7 +145,11 @@ export function ClipInspectorTimelineEntitySection({
                 min={12}
                 max={120}
                 step={1}
-                onChange={(value) => onUpdateTextOverlayStyle(entity.overlay.id, { fontSize: value })}
+                onChange={(value) =>
+                  onUpdateTextOverlayStyle(entity.overlay.id, {
+                    fontSize: value,
+                  })
+                }
               />
 
               <InspectorNumberInputRow
@@ -147,7 +159,9 @@ export function ClipInspectorTimelineEntitySection({
                 max={24}
                 step={0.5}
                 onChange={(value) =>
-                  onUpdateTextOverlayStyle(entity.overlay.id, { letterSpacing: value })
+                  onUpdateTextOverlayStyle(entity.overlay.id, {
+                    letterSpacing: value,
+                  })
                 }
               />
 
@@ -157,7 +171,11 @@ export function ClipInspectorTimelineEntitySection({
                 min={0.8}
                 max={2.4}
                 step={0.05}
-                onChange={(value) => onUpdateTextOverlayStyle(entity.overlay.id, { lineHeight: value })}
+                onChange={(value) =>
+                  onUpdateTextOverlayStyle(entity.overlay.id, {
+                    lineHeight: value,
+                  })
+                }
               />
 
               <label className="flex items-center justify-between gap-2 text-[11px]">

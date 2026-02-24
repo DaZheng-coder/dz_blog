@@ -35,24 +35,20 @@ export function ClipPreviewPanel() {
   const previewStageRef = useRef<HTMLDivElement>(null);
   const timelineSource =
     previewSource?.sourceType === "timeline" ? previewSource : null;
-  const {
-    videoRef,
-    isEmptySource,
-    effectivePlaying,
-    togglePlayPause,
-    seekBy,
-  } = useClipPreviewController({
-    previewSource,
-    timelinePlaying,
-    onToggleTimelinePlaying: setTimelinePlaying,
-  });
+  const { videoRef, isEmptySource, effectivePlaying, togglePlayPause, seekBy } =
+    useClipPreviewController({
+      previewSource,
+      timelinePlaying,
+      onToggleTimelinePlaying: setTimelinePlaying,
+    });
 
   const activeTextOverlays = textOverlays.filter(
     (overlay) =>
       timelineCurrentTimeSeconds >= overlay.startSeconds &&
       timelineCurrentTimeSeconds < overlay.endSeconds
   );
-  const showPreviewStage = Boolean(previewSource) || activeTextOverlays.length > 0;
+  const showPreviewStage =
+    Boolean(previewSource) || activeTextOverlays.length > 0;
 
   const handleOverlayDragStart = (
     event: React.MouseEvent<HTMLDivElement>,
@@ -119,7 +115,7 @@ export function ClipPreviewPanel() {
                 <div className="relative h-full w-full overflow-hidden bg-[#090d14]">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,#22d3ee30_0%,transparent_35%),radial-gradient(circle_at_75%_75%,#3b82f640_0%,transparent_42%)]" />
                   <div className="absolute inset-0 grid place-items-center text-sm text-[#9ca3af]">
-                    请在时间轴选择片段进行预览
+                    请导入视频开始编辑
                   </div>
                 </div>
               )}
@@ -145,7 +141,8 @@ export function ClipPreviewPanel() {
                             setSelectedPreviewVideoInfo({
                               objectUrl: timelineSource.objectUrl,
                               durationSeconds: timelineSource.durationSeconds,
-                              sourceStartSeconds: timelineSource.sourceStartSeconds,
+                              sourceStartSeconds:
+                                timelineSource.sourceStartSeconds,
                               sourceEndSeconds: timelineSource.sourceEndSeconds,
                             });
                           }}

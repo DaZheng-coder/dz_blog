@@ -58,8 +58,12 @@ export async function exportTimelineToMp4(
   options: ExportTimelineOptions = {}
 ): Promise<ExportTimelineResult> {
   const { onProgress, textOverlays = [] } = options;
-  if (clips.length === 0) {
-    throw new Error("时间轴没有片段可导出");
+  const hasValidTextOverlay = textOverlays.some(
+    (overlay) =>
+      overlay.text.trim().length > 0 && overlay.endSeconds > overlay.startSeconds
+  );
+  if (clips.length === 0 && !hasValidTextOverlay) {
+    throw new Error("时间轴没有片段或文本可导出");
   }
 
   const worker = getExportWorker();
@@ -93,6 +97,7 @@ export async function exportTimelineToMp4(
 
       worker.removeEventListener("message", handleMessage);
       worker.removeEventListener("error", handleError);
+      worker.removeEventListener("messageerror", handleMessageError);
 
       if (message.type === "EXPORT_ERROR") {
         console.error("[clip-export] failed", {
@@ -118,14 +123,34 @@ export async function exportTimelineToMp4(
       console.error("[clip-export] worker error", {
         requestId,
         message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error,
+        stack:
+          event.error instanceof Error ? event.error.stack : undefined,
       });
       worker.removeEventListener("message", handleMessage);
       worker.removeEventListener("error", handleError);
+      worker.removeEventListener("messageerror", handleMessageError);
       reject(new Error(event.message || "导出失败，请稍后重试"));
+    };
+
+    const handleMessageError = (event: MessageEvent) => {
+      console.error("[clip-export] worker messageerror", {
+        requestId,
+        event,
+        data: event.data,
+      });
+      worker.removeEventListener("message", handleMessage);
+      worker.removeEventListener("error", handleError);
+      worker.removeEventListener("messageerror", handleMessageError);
+      reject(new Error("导出消息解析失败，请查看控制台日志"));
     };
 
     worker.addEventListener("message", handleMessage);
     worker.addEventListener("error", handleError);
+    worker.addEventListener("messageerror", handleMessageError);
 
     const message: ExportRequestMessage = {
       type: "EXPORT",
