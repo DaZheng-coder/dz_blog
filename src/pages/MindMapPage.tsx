@@ -152,10 +152,27 @@ function generateLargeMindMapData(totalNodes: number): MindMapNode {
   return root;
 }
 
+function createVariableLengthNodeText(
+  levelIndex: number,
+  nodeIndex: number,
+  serial: number
+): string {
+  const short = `节点 ${serial}`;
+  const medium = `层${levelIndex + 1} 分组${Math.floor(nodeIndex / 10) + 1} - 节点${nodeIndex + 1}`;
+  const long = `层${levelIndex + 1} 节点${nodeIndex + 1}：覆盖需求拆解、方案评审、研发联调、测试验收`;
+  const veryLong = `层${levelIndex + 1} 节点${nodeIndex + 1}（序号${serial}）：围绕目标澄清、执行跟踪、风险识别、质量保障与复盘优化进行持续推进`;
+
+  const type = (levelIndex * 29 + nodeIndex * 11 + serial) % 4;
+  if (type === 0) return short;
+  if (type === 1) return medium;
+  if (type === 2) return long;
+  return veryLong;
+}
+
 function generateDeepMindMapData(totalNodes: number): MindMapNode {
   const root: MindMapNode = {
     id: "deep-root",
-    text: `深层级性能测试场景（${totalNodes}节点）`,
+    text: `千节点深宽混合场景（${totalNodes}节点）`,
     children: [],
   };
 
@@ -163,59 +180,57 @@ function generateDeepMindMapData(totalNodes: number): MindMapNode {
     return root;
   }
 
-  let createdCount = 1;
-  const candidates: Array<{ node: MindMapNode; depth: number }> = [];
-  const backboneGroups = 12; // 顶层先铺宽，确保横向展开
-  const backboneDepth = 16; // 每组继续加深，确保纵向层级
+  const levelWeights = [10, 28, 64, 110, 160, 200, 185, 140, 90, 12];
+  const totalWeight = levelWeights.reduce((sum, weight) => sum + weight, 0);
+  const remainingNodes = totalNodes - 1;
+  const levelCounts = levelWeights.map((weight) =>
+    Math.max(1, Math.floor((weight / totalWeight) * remainingNodes))
+  );
 
-  // 1) 先创建多条深链：根节点宽 + 每条链深
-  for (let g = 0; g < backboneGroups && createdCount < totalNodes; g++) {
-    createdCount += 1;
-    const branchRoot: MindMapNode = {
-      id: `deep-node-${createdCount}`,
-      text: `主分支 ${g + 1}`,
-      children: [],
-    };
-    root.children.push(branchRoot);
-    candidates.push({ node: branchRoot, depth: 1 });
+  let assigned = levelCounts.reduce((sum, count) => sum + count, 0);
+  let delta = remainingNodes - assigned;
+  const rebalanceOrder = [5, 4, 6, 3, 7, 2, 8, 1, 9, 0];
 
-    let current = branchRoot;
-    for (let d = 0; d < backboneDepth && createdCount < totalNodes; d++) {
-      createdCount += 1;
-      const chainNode: MindMapNode = {
-        id: `deep-node-${createdCount}`,
-        text: `深链${g + 1}-${d + 1}`,
-        children: [],
-      };
-      current.children.push(chainNode);
-      current = chainNode;
-      candidates.push({ node: chainNode, depth: d + 2 });
+  while (delta > 0) {
+    for (const index of rebalanceOrder) {
+      if (delta <= 0) break;
+      levelCounts[index] += 1;
+      delta -= 1;
     }
   }
 
-  // 2) 填充剩余节点：深度优先，同时周期性扩展次深分支，兼顾宽度
-  while (createdCount < totalNodes && candidates.length > 0) {
-    candidates.sort((a, b) => b.depth - a.depth);
-    const pickIndex =
-      createdCount % 5 === 0 ? Math.min(10, candidates.length - 1) : 0;
-    const selected = candidates[pickIndex];
-    const { node: parent, depth } = selected;
+  while (delta < 0) {
+    for (const index of rebalanceOrder) {
+      if (delta >= 0) break;
+      if (levelCounts[index] > 1) {
+        levelCounts[index] -= 1;
+        delta += 1;
+      }
+    }
+  }
 
-    const maxChildren = depth <= 3 ? 6 : depth <= 10 ? 4 : depth <= 18 ? 3 : 2;
-    if (parent.children.length >= maxChildren) {
-      candidates.splice(pickIndex, 1);
-      continue;
+  const levels: MindMapNode[][] = [[root]];
+  let createdCount = 1;
+
+  for (let levelIndex = 0; levelIndex < levelCounts.length; levelIndex++) {
+    const parentLevel = levels[levelIndex];
+    const nextLevelCount = levelCounts[levelIndex];
+    const nextLevel: MindMapNode[] = [];
+
+    for (let i = 0; i < nextLevelCount; i++) {
+      createdCount += 1;
+      const node: MindMapNode = {
+        id: `deep-node-${createdCount}`,
+        text: createVariableLengthNodeText(levelIndex, i, createdCount),
+        children: [],
+      };
+
+      const parentIndex = (i * 7 + levelIndex * 3) % parentLevel.length;
+      parentLevel[parentIndex].children.push(node);
+      nextLevel.push(node);
     }
 
-    createdCount += 1;
-    const child: MindMapNode = {
-      id: `deep-node-${createdCount}`,
-      text:
-        depth >= 18 ? `深层分支 ${createdCount}` : `横向分支 ${createdCount}`,
-      children: [],
-    };
-    parent.children.push(child);
-    candidates.unshift({ node: child, depth: depth + 1 });
+    levels.push(nextLevel);
   }
 
   return root;
@@ -279,7 +294,7 @@ function generateBalancedHugeMindMapData(totalNodes: number): MindMapNode {
       createdCount += 1;
       const node: MindMapNode = {
         id: `huge-node-${createdCount}`,
-        text: `层${levelIndex + 1}-节点${i + 1}`,
+        text: createVariableLengthNodeText(levelIndex, i, createdCount),
         children: [],
       };
 
@@ -386,7 +401,7 @@ export function MindMapPage() {
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          1000 节点（深层级）
+          1000 节点（深宽混合）
         </button>
         <button
           type="button"
