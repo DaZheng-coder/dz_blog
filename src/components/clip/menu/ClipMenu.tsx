@@ -7,7 +7,11 @@ import { menuItems } from "../shared/data";
 import { exportTimelineToMp4 } from "./exportTimelineToMp4";
 import { subtleButtonClass } from "../shared/styles";
 
-export function ClipMenu() {
+type ClipMenuProps = {
+  onOpenImport: () => void;
+};
+
+export function ClipMenu({ onOpenImport }: ClipMenuProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -71,6 +75,16 @@ export function ClipMenu() {
     }
   };
 
+  const handleMenuAction = (item: string) => {
+    if (item === "导入") {
+      onOpenImport();
+      return;
+    }
+    if (item === "文本") {
+      setShowTextModal(true);
+    }
+  };
+
   const handleAddText = (text: string) => {
     const startSeconds = Math.max(0, timelineCurrentTimeSeconds || 0);
     const duration = 3;
@@ -95,7 +109,7 @@ export function ClipMenu() {
             <button
               key={item}
               className={subtleButtonClass}
-              onClick={item === "文本" ? () => setShowTextModal(true) : undefined}
+              onClick={() => handleMenuAction(item)}
             >
               {item}
             </button>

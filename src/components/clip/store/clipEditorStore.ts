@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type {
   ClipDragAsset,
+  ClipMediaAsset,
   ClipPreviewSource,
   ClipTextOverlay,
   ClipTrackClip,
@@ -25,6 +26,7 @@ type ClipEditorStore = {
   selectedTimelineClipIds: string[];
   selectedTimelineTrack: "video" | "audio" | null;
   previewSource: ClipPreviewSource | null;
+  selectedInspectorAsset: ClipMediaAsset | null;
   timelinePlaying: boolean;
   timelineToolMode: "select" | "cut";
   timelineCurrentTimeSeconds: number;
@@ -52,6 +54,7 @@ type ClipEditorStore = {
     appendSelection?: boolean
   ) => void;
   setTimelinePlaying: (playing: boolean) => void;
+  setSelectedInspectorAsset: (asset: ClipMediaAsset | null) => void;
   setTimelineToolMode: (mode: "select" | "cut") => void;
   setTrackTotalDurationSeconds: (durationSeconds: number) => void;
   previewTimelineClip: (clip: ClipTrackClip) => void;
@@ -68,6 +71,7 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
   selectedTimelineClipIds: [],
   selectedTimelineTrack: null,
   previewSource: null,
+  selectedInspectorAsset: null,
   timelinePlaying: false,
   timelineToolMode: "select",
   timelineCurrentTimeSeconds: 0,
@@ -127,6 +131,7 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
       };
     }),
   setTimelinePlaying: (playing) => set({ timelinePlaying: playing }),
+  setSelectedInspectorAsset: (asset) => set({ selectedInspectorAsset: asset }),
   setTimelineToolMode: (mode) => set({ timelineToolMode: mode }),
   setTrackTotalDurationSeconds: (durationSeconds) =>
     set({ trackTotalDurationSeconds: durationSeconds }),

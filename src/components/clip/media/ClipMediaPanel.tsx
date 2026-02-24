@@ -4,7 +4,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ChangeEvent,
   type DragEvent,
 } from "react";
 import { ClipMediaAssetCard } from "./ClipMediaAssetCard";
@@ -15,10 +14,7 @@ import { createCardDragGhost, createTrackBlockGhost } from "./dragGhost";
 import { MEDIA_ASSET_MIME } from "../shared/dnd";
 import { subtleButtonClass } from "../shared/styles";
 import type { ClipDragAsset, ClipMediaAsset } from "../shared/types";
-import { createAudioAsset, createVideoAsset } from "./videoAsset";
 import DeleteIcon from "../../../assets/delete.svg?react";
-
-const MEDIA_IMPORT_CONCURRENCY = 2;
 
 function formatTimelineRangeTime(seconds: number) {
   const safe = Math.max(0, Math.floor(seconds));
@@ -31,43 +27,24 @@ function formatTimelineRangeTime(seconds: number) {
   )}:${String(remainSeconds).padStart(2, "0")}`;
 }
 
-async function runWithConcurrency<TInput, TResult>(
-  items: TInput[],
-  concurrency: number,
-  worker: (item: TInput, index: number) => Promise<TResult>
-) {
-  if (items.length === 0) {
-    return [] as PromiseSettledResult<TResult>[];
-  }
+type ClipMediaPanelProps = {
+  assets: ClipMediaAsset[];
+  isParsing: boolean;
+  onImportMediaFiles: (files: File[]) => Promise<void>;
+  onOpenImport: () => void;
+};
 
-  const maxConcurrency = Math.max(1, concurrency);
-  const results = new Array<PromiseSettledResult<TResult>>(items.length);
-  let nextIndex = 0;
-
-  async function runner() {
-    while (nextIndex < items.length) {
-      const currentIndex = nextIndex;
-      nextIndex += 1;
-      try {
-        const value = await worker(items[currentIndex], currentIndex);
-        results[currentIndex] = { status: "fulfilled", value };
-      } catch (reason) {
-        results[currentIndex] = { status: "rejected", reason };
-      }
-    }
-  }
-
-  const runners = Array.from(
-    { length: Math.min(maxConcurrency, items.length) },
-    () => runner()
-  );
-  await Promise.all(runners);
-  return results;
-}
-
-export function ClipMediaPanel() {
+export function ClipMediaPanel({
+  assets,
+  isParsing,
+  onImportMediaFiles,
+  onOpenImport,
+}: ClipMediaPanelProps) {
   const setDraggingAsset = useClipEditorStore(
     (state) => state.setDraggingAsset
+  );
+  const setSelectedInspectorAsset = useClipEditorStore(
+    (state) => state.setSelectedInspectorAsset
   );
   const textOverlays = useClipEditorStore((state) => state.textOverlays);
   const timelineCurrentTimeSeconds = useClipEditorStore(
@@ -75,8 +52,6 @@ export function ClipMediaPanel() {
   );
   const setTextOverlays = useClipEditorStore((state) => state.setTextOverlays);
   const addTextOverlay = useClipEditorStore((state) => state.addTextOverlay);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const objectUrlSetRef = useRef(new Set<string>());
   const dragGhostRef = useRef<HTMLElement | null>(null);
   const cardGhostRef = useRef<HTMLElement | null>(null);
   const trackGhostRef = useRef<HTMLElement | null>(null);
@@ -85,8 +60,6 @@ export function ClipMediaPanel() {
   const dragGhostFrameRef = useRef<number | null>(null);
   const dragGhostPendingPosRef = useRef<{ x: number; y: number } | null>(null);
   const transparentDragImageRef = useRef<HTMLCanvasElement | null>(null);
-  const [assets, setAssets] = useState<ClipMediaAsset[]>([]);
-  const [isParsing, setIsParsing] = useState(false);
   const [activeTab, setActiveTab] = useState<"media" | "text">("media");
   const [newText, setNewText] = useState("");
 
@@ -100,10 +73,7 @@ export function ClipMediaPanel() {
   );
 
   useEffect(() => {
-    const objectUrls = objectUrlSetRef.current;
     return () => {
-      objectUrls.forEach((url) => URL.revokeObjectURL(url));
-      objectUrls.clear();
       if (dragGhostRef.current) {
         dragGhostRef.current.remove();
         dragGhostRef.current = null;
@@ -221,70 +191,14 @@ export function ClipMediaPanel() {
     };
   }, [clearDragGhost, scheduleGhostPosition]);
 
-  const handleImportMedia = useCallback(async (files: File[]) => {
-    const mediaFiles = files.filter(
-      (file) => file.type.startsWith("video/") || file.type.startsWith("audio/")
-    );
-    if (mediaFiles.length === 0) {
-      return;
-    }
-
-    setIsParsing(true);
-    try {
-      const parsed = await runWithConcurrency(
-        mediaFiles,
-        MEDIA_IMPORT_CONCURRENCY,
-        (file) =>
-          file.type.startsWith("audio/")
-            ? createAudioAsset(file)
-            : createVideoAsset(file)
-      );
-
-      setAssets((prev) => {
-        const signatureSet = new Set(prev.map((asset) => asset.signature));
-        const next = [...prev];
-
-        for (const item of parsed) {
-          if (item.status !== "fulfilled") {
-            continue;
-          }
-          if (signatureSet.has(item.value.signature)) {
-            URL.revokeObjectURL(item.value.objectUrl);
-            continue;
-          }
-          signatureSet.add(item.value.signature);
-          objectUrlSetRef.current.add(item.value.objectUrl);
-          next.push(item.value);
-        }
-
-        return next;
-      });
-    } finally {
-      setIsParsing(false);
-    }
-  }, []);
-
-  const handleInputChange = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files || []);
-      await handleImportMedia(files);
-      event.target.value = "";
-    },
-    [handleImportMedia]
-  );
-
   const handleDrop = useCallback(
     async (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault();
       const files = Array.from(event.dataTransfer.files || []);
-      await handleImportMedia(files);
+      await onImportMediaFiles(files);
     },
-    [handleImportMedia]
+    [onImportMediaFiles]
   );
-
-  const openFilePicker = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
 
   const handleAssetDragStart = (
     event: DragEvent<HTMLElement>,
@@ -355,7 +269,7 @@ export function ClipMediaPanel() {
       title="素材库"
       rightSlot={
         activeTab === "media" ? (
-          <button className={subtleButtonClass} onClick={openFilePicker}>
+          <button className={subtleButtonClass} onClick={onOpenImport}>
             导入素材
           </button>
         ) : (
@@ -366,15 +280,6 @@ export function ClipMediaPanel() {
       }
       bodyClassName="flex min-h-0 flex-col"
     >
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="video/*,audio/*"
-        multiple
-        className="hidden"
-        onChange={handleInputChange}
-      />
-
       <div className="border-b border-white/10 px-2 py-2 text-xs flex items-center gap-2">
         <button
           className={`cursor-pointer rounded-md px-3 py-1.5 ${
@@ -413,6 +318,7 @@ export function ClipMediaPanel() {
                   <ClipMediaAssetCard
                     key={asset.id}
                     asset={asset}
+                    onClick={setSelectedInspectorAsset}
                     onDragStart={handleAssetDragStart}
                     onDragEnd={() => {
                       clearDragGhost();

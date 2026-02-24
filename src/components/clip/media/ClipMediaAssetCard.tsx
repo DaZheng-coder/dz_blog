@@ -6,18 +6,21 @@ type ClipMediaAssetCardProps = {
   asset: ClipMediaAsset;
   onDragStart: (event: ReactDragEvent<HTMLElement>, asset: ClipMediaAsset) => void;
   onDragEnd: () => void;
+  onClick: (asset: ClipMediaAsset) => void;
 };
 
 export function ClipMediaAssetCard({
   asset,
   onDragStart,
   onDragEnd,
+  onClick,
 }: ClipMediaAssetCardProps) {
   return (
     <article
       draggable
       onDragStart={(event) => onDragStart(event, asset)}
       onDragEnd={onDragEnd}
+      onClick={() => onClick(asset)}
       className="cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] p-2 transition hover:border-[#22d3ee]/50"
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md bg-gradient-to-br from-[#1f2937] to-[#0f172a]">

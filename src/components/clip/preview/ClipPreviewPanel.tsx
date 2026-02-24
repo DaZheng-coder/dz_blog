@@ -68,7 +68,9 @@ export function ClipPreviewPanel() {
       );
       setTextOverlays((prev) =>
         prev.map((overlay) =>
-          overlay.id === overlayId ? { ...overlay, xPercent, yPercent } : overlay
+          overlay.id === overlayId
+            ? { ...overlay, xPercent, yPercent }
+            : overlay
         )
       );
     };
@@ -115,11 +117,12 @@ export function ClipPreviewPanel() {
               {previewSource && (
                 <>
                   {isEmptySource ? (
-                    <div className="grid h-full w-full place-items-center bg-black text-sm text-[#9ca3af]">
-                      空白帧预览
-                    </div>
+                    <div className="grid h-full w-full place-items-center bg-black text-sm text-[#9ca3af]"></div>
                   ) : (
-                    <div ref={previewStageRef} className="relative h-full w-full">
+                    <div
+                      ref={previewStageRef}
+                      className="relative h-full w-full"
+                    >
                       <video
                         key={`${timelineSource?.sourceType}-${timelineSource?.objectUrl}`}
                         ref={videoRef}
