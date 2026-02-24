@@ -6,6 +6,7 @@ import { ClipTextOverlayModal } from "./ClipTextOverlayModal";
 import { menuItems } from "../shared/data";
 import { exportTimelineToMp4 } from "./exportTimelineToMp4";
 import { subtleButtonClass } from "../shared/styles";
+import { useTextOverlayActions } from "../text/useTextOverlayActions";
 
 type ClipMenuProps = {
   onOpenImport: () => void;
@@ -23,12 +24,13 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
     filename: string;
   } | null>(null);
   const timelineClips = useClipEditorStore((state) => state.timelineClips);
-  const textOverlays = useClipEditorStore((state) => state.textOverlays);
-  const timelineCurrentTimeSeconds = useClipEditorStore(
-    (state) => state.timelineCurrentTimeSeconds
-  );
-  const addTextOverlay = useClipEditorStore((state) => state.addTextOverlay);
-  const setTextOverlays = useClipEditorStore((state) => state.setTextOverlays);
+  const {
+    textOverlays,
+    timelineCurrentTimeSeconds,
+    addTextOverlayAtCurrentTime,
+    updateTextOverlay,
+    removeTextOverlay,
+  } = useTextOverlayActions();
 
   const handleDownloadExported = () => {
     if (!exportedFile) {
@@ -86,19 +88,7 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
   };
 
   const handleAddText = (text: string) => {
-    const startSeconds = Math.max(0, timelineCurrentTimeSeconds || 0);
-    const duration = 3;
-    addTextOverlay({
-      text: text.trim(),
-      startSeconds,
-      endSeconds: startSeconds + duration,
-      xPercent: 50,
-      yPercent: 85,
-      fontSize: 40,
-      letterSpacing: 0,
-      lineHeight: 1.2,
-      color: "#ffffff",
-    });
+    addTextOverlayAtCurrentTime(text);
   };
 
   return (
@@ -146,18 +136,8 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
         overlays={textOverlays}
         onClose={() => setShowTextModal(false)}
         onAdd={handleAddText}
-        onUpdate={(overlayId, patch) =>
-          setTextOverlays((prev) =>
-            prev.map((overlay) =>
-              overlay.id === overlayId ? { ...overlay, ...patch } : overlay
-            )
-          )
-        }
-        onDelete={(overlayId) =>
-          setTextOverlays((prev) =>
-            prev.filter((overlay) => overlay.id !== overlayId)
-          )
-        }
+        onUpdate={updateTextOverlay}
+        onDelete={removeTextOverlay}
       />
     </>
   );

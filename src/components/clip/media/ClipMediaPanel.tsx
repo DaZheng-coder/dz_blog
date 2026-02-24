@@ -14,18 +14,9 @@ import { createCardDragGhost, createTrackBlockGhost } from "./dragGhost";
 import { MEDIA_ASSET_MIME } from "../shared/dnd";
 import { subtleButtonClass } from "../shared/styles";
 import type { ClipDragAsset, ClipMediaAsset } from "../shared/types";
+import { formatTimelineRangeTime } from "../shared/time";
 import DeleteIcon from "../../../assets/delete.svg?react";
-
-function formatTimelineRangeTime(seconds: number) {
-  const safe = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(safe / 3600);
-  const minutes = Math.floor((safe % 3600) / 60);
-  const remainSeconds = safe % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-    2,
-    "0"
-  )}:${String(remainSeconds).padStart(2, "0")}`;
-}
+import { useTextOverlayActions } from "../text/useTextOverlayActions";
 
 type ClipMediaPanelProps = {
   assets: ClipMediaAsset[];
@@ -46,18 +37,19 @@ export function ClipMediaPanel({
   const setSelectedInspectorAsset = useClipEditorStore(
     (state) => state.setSelectedInspectorAsset
   );
-  const textOverlays = useClipEditorStore((state) => state.textOverlays);
+  const {
+    textOverlays,
+    timelineCurrentTimeSeconds,
+    addTextOverlayAtCurrentTime,
+    updateTextOverlay,
+    removeTextOverlay,
+  } = useTextOverlayActions();
   const selectedTimelineTrack = useClipEditorStore(
     (state) => state.selectedTimelineTrack
   );
   const selectedTimelineClipIds = useClipEditorStore(
     (state) => state.selectedTimelineClipIds
   );
-  const timelineCurrentTimeSeconds = useClipEditorStore(
-    (state) => state.timelineCurrentTimeSeconds
-  );
-  const setTextOverlays = useClipEditorStore((state) => state.setTextOverlays);
-  const addTextOverlay = useClipEditorStore((state) => state.addTextOverlay);
   const setSelectedTimelineClip = useClipEditorStore(
     (state) => state.setSelectedTimelineClip
   );
@@ -245,24 +237,12 @@ export function ClipMediaPanel({
   };
 
   const handleAddText = useCallback(() => {
-    const text = newText.trim();
-    if (!text) {
+    if (!newText.trim()) {
       return;
     }
-    const startSeconds = Math.max(0, timelineCurrentTimeSeconds || 0);
-    addTextOverlay({
-      text,
-      startSeconds,
-      endSeconds: startSeconds + 3,
-      xPercent: 50,
-      yPercent: 85,
-      fontSize: 40,
-      letterSpacing: 0,
-      lineHeight: 1.2,
-      color: "#ffffff",
-    });
+    addTextOverlayAtCurrentTime(newText);
     setNewText("");
-  }, [addTextOverlay, newText, timelineCurrentTimeSeconds]);
+  }, [addTextOverlayAtCurrentTime, newText]);
 
   const sortedTextOverlays = useMemo(
     () =>
@@ -396,13 +376,9 @@ export function ClipMediaPanel({
                       value={overlay.text}
                       onClick={(event) => event.stopPropagation()}
                       onChange={(event) =>
-                        setTextOverlays((prev) =>
-                          prev.map((item) =>
-                            item.id === overlay.id
-                              ? { ...item, text: event.target.value }
-                              : item
-                          )
-                        )
+                        updateTextOverlay(overlay.id, {
+                          text: event.target.value,
+                        })
                       }
                     />
                     <div className="mt-2 flex items-center justify-between text-[11px] text-[#9ca3af]">
@@ -414,9 +390,7 @@ export function ClipMediaPanel({
                         className="cursor-pointer rounded border border-red-400/35 bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:border-red-300/70"
                         onClick={(event) => {
                           event.stopPropagation();
-                          setTextOverlays((prev) =>
-                            prev.filter((item) => item.id !== overlay.id)
-                          );
+                          removeTextOverlay(overlay.id);
                         }}
                       >
                         <DeleteIcon className="h-4 w-4 fill-current" />
