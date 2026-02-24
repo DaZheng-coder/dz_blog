@@ -2,6 +2,10 @@ import type { SetStateAction } from "react";
 import { DEFAULT_ZOOM } from "./clipTimelineConfig";
 import { clamp, formatTime } from "./clipTimelineUtils";
 import { timelineZoomButtonClass } from "../shared/styles";
+import PointerIcon from "../../../assets/pointer.svg?react";
+import ClipIcon from "../../../assets/clip.svg?react";
+import IncreaseIcon from "../../../assets/increase.svg?react";
+import DecreaseIcon from "../../../assets/decrease.svg?react";
 
 type ClipTimelineToolbarProps = {
   currentTimeSeconds: number;
@@ -32,13 +36,15 @@ export function ClipTimelineToolbar({
         <span>缩放 {zoomPercent}%</span>
       </div>
       <div className="flex items-center gap-2">
+        <button className={timelineZoomButtonClass} onClick={onSplitSelected}>
+          <PointerIcon className="h-4 w-4 fill-current" />
+        </button>
         <button
-          className="cursor-pointer rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-[#d1d5db] hover:border-[#22d3ee]/70"
-          title="切割工具"
+          className={timelineZoomButtonClass}
           aria-label="切割工具"
           onClick={onSplitSelected}
         >
-          切割
+          <ClipIcon className="h-4 w-4 fill-current" />
         </button>
         <button
           className={timelineZoomButtonClass}
@@ -46,15 +52,7 @@ export function ClipTimelineToolbar({
             setPixelsPerSecond((prev) => clamp(prev + 2, minZoom, maxZoom))
           }
         >
-          +
-        </button>
-        <button
-          className={timelineZoomButtonClass}
-          onClick={() =>
-            setPixelsPerSecond((prev) => clamp(prev - 2, minZoom, maxZoom))
-          }
-        >
-          -
+          <IncreaseIcon className="h-4 w-4 fill-current" />
         </button>
         <input
           type="range"
@@ -66,6 +64,14 @@ export function ClipTimelineToolbar({
           className="h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-white/15 accent-[#67e8f9]"
           aria-label="时间轴缩放"
         />
+        <button
+          className={timelineZoomButtonClass}
+          onClick={() =>
+            setPixelsPerSecond((prev) => clamp(prev - 2, minZoom, maxZoom))
+          }
+        >
+          <DecreaseIcon className="h-4 w-4 fill-current" />
+        </button>
       </div>
     </div>
   );

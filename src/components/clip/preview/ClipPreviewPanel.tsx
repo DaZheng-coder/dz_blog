@@ -2,6 +2,12 @@ import { ClipPanelFrame } from "../shared/ClipPanelFrame";
 import { useClipEditorStore } from "../store/clipEditorStore";
 import { formatDuration } from "../shared/time";
 import { useClipPreviewController } from "./useClipPreviewController";
+import {
+  FastForwardIcon,
+  PauseIcon,
+  PlayIcon,
+  RewindIcon,
+} from "../shared/icons";
 
 const SEEK_STEP_SECONDS = 2;
 
@@ -74,28 +80,34 @@ export function ClipPreviewPanel() {
                 </>
               )}
             </div>
-            <div className="mt-2 flex items-center justify-between rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-[#d1d5db]">
+            <div className="mt-2 relative flex items-center justify-center rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-[#d1d5db]">
               <div className="flex items-center gap-2">
                 <button
-                  className="cursor-pointer rounded border border-white/15 bg-white/5 px-2 py-1 hover:border-[#22d3ee]/70"
+                  className="cursor-pointer rounded border border-white/15 bg-white/5 p-2 hover:border-[#22d3ee]/70"
                   onClick={() => seekBy(-SEEK_STEP_SECONDS)}
+                  aria-label="快退2秒"
+                  title="快退 2 秒"
                 >
-                  « 2s
+                  <RewindIcon />
                 </button>
                 <button
-                  className="cursor-pointer rounded border border-white/15 bg-white/5 px-3 py-1 hover:border-[#22d3ee]/70"
+                  className="cursor-pointer rounded border border-white/15 bg-white/5 p-2 hover:border-[#22d3ee]/70"
                   onClick={togglePlayPause}
+                  aria-label={effectivePlaying ? "暂停" : "播放"}
+                  title={effectivePlaying ? "暂停" : "播放"}
                 >
-                  {effectivePlaying ? "暂停" : "播放"}
+                  {effectivePlaying ? <PauseIcon /> : <PlayIcon />}
                 </button>
                 <button
-                  className="cursor-pointer rounded border border-white/15 bg-white/5 px-2 py-1 hover:border-[#22d3ee]/70"
+                  className="cursor-pointer rounded border border-white/15 bg-white/5 p-2 hover:border-[#22d3ee]/70"
                   onClick={() => seekBy(SEEK_STEP_SECONDS)}
+                  aria-label="快进2秒"
+                  title="快进 2 秒"
                 >
-                  2s »
+                  <FastForwardIcon />
                 </button>
               </div>
-              <div className="text-right text-[#9ca3af]">
+              <div className="text-right text-[#9ca3af] absolute right-3">
                 <p>
                   {formatDuration(timelineCurrentSeconds)} /{" "}
                   {formatDuration(timelineTotalDurationSeconds)}
