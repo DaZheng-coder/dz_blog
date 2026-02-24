@@ -16,8 +16,20 @@ import { MEDIA_ASSET_MIME } from "../shared/dnd";
 import { subtleButtonClass } from "../shared/styles";
 import type { ClipDragAsset, ClipMediaAsset } from "../shared/types";
 import { createAudioAsset, createVideoAsset } from "./videoAsset";
+import DeleteIcon from "../../../assets/delete.svg?react";
 
 const MEDIA_IMPORT_CONCURRENCY = 2;
+
+function formatTimelineRangeTime(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const remainSeconds = safe % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+    2,
+    "0"
+  )}:${String(remainSeconds).padStart(2, "0")}`;
+}
 
 async function runWithConcurrency<TInput, TResult>(
   items: TInput[],
@@ -54,7 +66,15 @@ async function runWithConcurrency<TInput, TResult>(
 }
 
 export function ClipMediaPanel() {
-  const setDraggingAsset = useClipEditorStore((state) => state.setDraggingAsset);
+  const setDraggingAsset = useClipEditorStore(
+    (state) => state.setDraggingAsset
+  );
+  const textOverlays = useClipEditorStore((state) => state.textOverlays);
+  const timelineCurrentTimeSeconds = useClipEditorStore(
+    (state) => state.timelineCurrentTimeSeconds
+  );
+  const setTextOverlays = useClipEditorStore((state) => state.setTextOverlays);
+  const addTextOverlay = useClipEditorStore((state) => state.addTextOverlay);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlSetRef = useRef(new Set<string>());
   const dragGhostRef = useRef<HTMLElement | null>(null);
@@ -67,6 +87,8 @@ export function ClipMediaPanel() {
   const transparentDragImageRef = useRef<HTMLCanvasElement | null>(null);
   const [assets, setAssets] = useState<ClipMediaAsset[]>([]);
   const [isParsing, setIsParsing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"media" | "text">("media");
+  const [newText, setNewText] = useState("");
 
   const hasAssets = assets.length > 0;
   const orderedAssets = useMemo(
@@ -138,7 +160,7 @@ export function ClipMediaPanel() {
       const element = document.elementFromPoint(event.clientX, event.clientY);
       const trackLane =
         element instanceof HTMLElement
-          ? element.closest<HTMLElement>('[data-clip-track-lane]')
+          ? element.closest<HTMLElement>("[data-clip-track-lane]")
           : null;
       const isOverTrackLane = Boolean(trackLane);
 
@@ -148,7 +170,9 @@ export function ClipMediaPanel() {
           return;
         }
         const pixelsPerSecond = Number(trackLane?.dataset.trackPps || "16");
-        const minClipWidth = Number(trackLane?.dataset.trackMinClipWidth || "64");
+        const minClipWidth = Number(
+          trackLane?.dataset.trackMinClipWidth || "64"
+        );
         ghost.remove();
         const trackGhost = createTrackBlockGhost(
           asset,
@@ -297,13 +321,48 @@ export function ClipMediaPanel() {
     setDraggingAsset(dragAsset);
   };
 
+  const handleAddText = useCallback(() => {
+    const text = newText.trim();
+    if (!text) {
+      return;
+    }
+    const startSeconds = Math.max(0, timelineCurrentTimeSeconds || 0);
+    addTextOverlay({
+      text,
+      startSeconds,
+      endSeconds: startSeconds + 3,
+      xPercent: 50,
+      yPercent: 85,
+      fontSize: 40,
+      color: "#ffffff",
+    });
+    setNewText("");
+  }, [addTextOverlay, newText, timelineCurrentTimeSeconds]);
+
+  const sortedTextOverlays = useMemo(
+    () =>
+      [...textOverlays].sort((a, b) => {
+        if (a.startSeconds !== b.startSeconds) {
+          return a.startSeconds - b.startSeconds;
+        }
+        return a.id.localeCompare(b.id);
+      }),
+    [textOverlays]
+  );
+
   return (
     <ClipPanelFrame
       title="素材库"
       rightSlot={
-        <button className={subtleButtonClass} onClick={openFilePicker}>
-          导入素材
-        </button>
+        activeTab === "media" ? (
+          <button className={subtleButtonClass} onClick={openFilePicker}>
+            导入素材
+          </button>
+        ) : (
+          <button className={subtleButtonClass} onClick={handleAddText}>
+            添加文本
+          </button>
+        )
       }
       bodyClassName="flex min-h-0 flex-col"
     >
@@ -316,9 +375,26 @@ export function ClipMediaPanel() {
         onChange={handleInputChange}
       />
 
-      <div className="border-b border-white/10 px-2 py-2 text-xs">
-        <button className="cursor-pointer rounded-md bg-[#22d3ee]/20 px-3 py-1.5 text-[#67e8f9]">
+      <div className="border-b border-white/10 px-2 py-2 text-xs flex items-center gap-2">
+        <button
+          className={`cursor-pointer rounded-md px-3 py-1.5 ${
+            activeTab === "media"
+              ? "bg-[#22d3ee]/20 text-[#67e8f9]"
+              : "bg-white/5 text-[#9ca3af] hover:text-[#d1d5db]"
+          }`}
+          onClick={() => setActiveTab("media")}
+        >
           视频 / 音频
+        </button>
+        <button
+          className={`cursor-pointer rounded-md px-3 py-1.5 ${
+            activeTab === "text"
+              ? "bg-[#22d3ee]/20 text-[#67e8f9]"
+              : "bg-white/5 text-[#9ca3af] hover:text-[#d1d5db]"
+          }`}
+          onClick={() => setActiveTab("text")}
+        >
+          文本
         </button>
       </div>
 
@@ -327,21 +403,90 @@ export function ClipMediaPanel() {
         onDragOver={(event) => event.preventDefault()}
         onDrop={handleDrop}
       >
-        {!hasAssets ? <ClipMediaEmptyState isParsing={isParsing} /> : null}
+        {activeTab === "media" ? (
+          <>
+            {!hasAssets ? <ClipMediaEmptyState isParsing={isParsing} /> : null}
 
-        {hasAssets && (
-          <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
-            {orderedAssets.map((asset) => (
-              <ClipMediaAssetCard
-                key={asset.id}
-                asset={asset}
-                onDragStart={handleAssetDragStart}
-                onDragEnd={() => {
-                  clearDragGhost();
-                  setDraggingAsset(null);
-                }}
+            {hasAssets && (
+              <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
+                {orderedAssets.map((asset) => (
+                  <ClipMediaAssetCard
+                    key={asset.id}
+                    asset={asset}
+                    onDragStart={handleAssetDragStart}
+                    onDragEnd={() => {
+                      clearDragGhost();
+                      setDraggingAsset(null);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                className="min-w-0 w-full flex-1 rounded border border-white/15 bg-white/5 px-2 py-1 text-xs text-white outline-none placeholder:text-[#6b7280] focus:border-[#22d3ee]/70"
+                placeholder="输入文本后添加到当前时间"
+                value={newText}
+                onChange={(event) => setNewText(event.target.value)}
               />
-            ))}
+              <button
+                className="cursor-pointer rounded border border-[#22d3ee]/45 bg-[#22d3ee]/15 px-3 py-1 text-xs text-[#b9f6ff] hover:border-[#22d3ee]/80 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!newText.trim()}
+                onClick={handleAddText}
+              >
+                添加
+              </button>
+            </div>
+            <div className="text-[11px] text-[#6b7280]">
+              当前时间：{timelineCurrentTimeSeconds.toFixed(2)}s
+            </div>
+            {sortedTextOverlays.length === 0 ? (
+              <p className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#9ca3af]">
+                暂无文本，请先添加一条。
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {sortedTextOverlays.map((overlay) => (
+                  <div
+                    key={overlay.id}
+                    className="rounded border border-white/10 bg-white/[0.03] p-2"
+                  >
+                    <input
+                      className="min-w-0 w-full rounded border border-white/15 bg-white/5 px-2 py-1 text-xs text-white outline-none focus:border-[#22d3ee]/70"
+                      value={overlay.text}
+                      onChange={(event) =>
+                        setTextOverlays((prev) =>
+                          prev.map((item) =>
+                            item.id === overlay.id
+                              ? { ...item, text: event.target.value }
+                              : item
+                          )
+                        )
+                      }
+                    />
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-[#9ca3af]">
+                      <span>
+                        {formatTimelineRangeTime(overlay.startSeconds)}～
+                        {formatTimelineRangeTime(overlay.endSeconds)}
+                      </span>
+                      <button
+                        className="cursor-pointer rounded border border-red-400/35 bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:border-red-300/70"
+                        onClick={() =>
+                          setTextOverlays((prev) =>
+                            prev.filter((item) => item.id !== overlay.id)
+                          )
+                        }
+                      >
+                        <DeleteIcon className="h-4 w-4 fill-current" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

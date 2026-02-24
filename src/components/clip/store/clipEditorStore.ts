@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type {
   ClipDragAsset,
   ClipPreviewSource,
+  ClipTextOverlay,
   ClipTrackClip,
 } from "../shared/types";
 
@@ -19,12 +20,14 @@ type ClipEditorStore = {
   draggingAsset: ClipDragAsset | null;
   timelineClips: ClipTrackClip[];
   audioTimelineClips: ClipTrackClip[];
+  textOverlays: ClipTextOverlay[];
   selectedTimelineClipId: string | null;
   selectedTimelineClipIds: string[];
   selectedTimelineTrack: "video" | "audio" | null;
   previewSource: ClipPreviewSource | null;
   timelinePlaying: boolean;
   timelineToolMode: "select" | "cut";
+  timelineCurrentTimeSeconds: number;
   trackTotalDurationSeconds: number;
   setDraggingAsset: (asset: ClipDragAsset | null) => void;
   setTimelineClips: (
@@ -37,6 +40,12 @@ type ClipEditorStore = {
       | ClipTrackClip[]
       | ((prevClips: ClipTrackClip[]) => ClipTrackClip[])
   ) => void;
+  setTextOverlays: (
+    updater:
+      | ClipTextOverlay[]
+      | ((prevOverlays: ClipTextOverlay[]) => ClipTextOverlay[])
+  ) => void;
+  addTextOverlay: (overlay: Omit<ClipTextOverlay, "id">) => string;
   setSelectedTimelineClip: (
     clipId: string | null,
     track: "video" | "audio" | null,
@@ -54,12 +63,14 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
   draggingAsset: null,
   timelineClips: [],
   audioTimelineClips: [],
+  textOverlays: [],
   selectedTimelineClipId: null,
   selectedTimelineClipIds: [],
   selectedTimelineTrack: null,
   previewSource: null,
   timelinePlaying: false,
   timelineToolMode: "select",
+  timelineCurrentTimeSeconds: 0,
   trackTotalDurationSeconds: 0,
   setDraggingAsset: (asset) => set({ draggingAsset: asset }),
   setTimelineClips: (updater) =>
@@ -76,6 +87,18 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
           ? updater(state.audioTimelineClips)
           : updater,
     })),
+  setTextOverlays: (updater) =>
+    set((state) => ({
+      textOverlays:
+        typeof updater === "function" ? updater(state.textOverlays) : updater,
+    })),
+  addTextOverlay: (overlay) => {
+    const id = crypto.randomUUID();
+    set((state) => ({
+      textOverlays: [...state.textOverlays, { ...overlay, id }],
+    }));
+    return id;
+  },
   setSelectedTimelineClip: (clipId, track, appendSelection = false) =>
     set((state) => {
       if (!clipId || !track) {
@@ -160,6 +183,7 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
             playheadSeconds: timeSeconds,
             timelinePlaying: isPlaying,
           },
+          timelineCurrentTimeSeconds: timeSeconds,
           selectedTimelineClipId,
           selectedTimelineClipIds,
           selectedTimelineTrack,
@@ -184,11 +208,16 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
             playheadSeconds: timeSeconds,
             timelinePlaying: isPlaying,
           },
+          timelineCurrentTimeSeconds: timeSeconds,
           selectedTimelineClipId,
           selectedTimelineClipIds,
           selectedTimelineTrack,
         };
       }
-      return state;
+      return state.timelineCurrentTimeSeconds === timeSeconds
+        ? state
+        : {
+            timelineCurrentTimeSeconds: timeSeconds,
+          };
     }),
 }));

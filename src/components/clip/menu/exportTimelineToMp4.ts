@@ -1,4 +1,4 @@
-import type { ClipTrackClip } from "../shared/types";
+import type { ClipTextOverlay, ClipTrackClip } from "../shared/types";
 
 type ExportProgressPayload = {
   progress: number;
@@ -6,6 +6,7 @@ type ExportProgressPayload = {
 };
 
 type ExportTimelineOptions = {
+  textOverlays?: ClipTextOverlay[];
   onProgress?: (payload: ExportProgressPayload) => void;
 };
 
@@ -18,6 +19,7 @@ type ExportRequestMessage = {
   type: "EXPORT";
   requestId: string;
   clips: ClipTrackClip[];
+  textOverlays: ClipTextOverlay[];
 };
 
 type ExportWorkerMessage =
@@ -55,7 +57,7 @@ export async function exportTimelineToMp4(
   clips: ClipTrackClip[],
   options: ExportTimelineOptions = {}
 ): Promise<ExportTimelineResult> {
-  const { onProgress } = options;
+  const { onProgress, textOverlays = [] } = options;
   if (clips.length === 0) {
     throw new Error("时间轴没有片段可导出");
   }
@@ -65,6 +67,7 @@ export async function exportTimelineToMp4(
   console.log("[clip-export] start", {
     requestId,
     clipCount: clips.length,
+    textOverlayCount: textOverlays.length,
   });
   onProgress?.({ progress: 1, message: "正在创建导出任务..." });
 
@@ -128,6 +131,7 @@ export async function exportTimelineToMp4(
       type: "EXPORT",
       requestId,
       clips,
+      textOverlays,
     };
     worker.postMessage(message);
   });

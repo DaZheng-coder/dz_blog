@@ -36,6 +36,17 @@ export type ClipTrackClip = {
   audioLevels?: number[];
 };
 
+export type ClipTextOverlay = {
+  id: string;
+  text: string;
+  startSeconds: number;
+  endSeconds: number;
+  xPercent: number;
+  yPercent: number;
+  fontSize: number;
+  color: string;
+};
+
 export type ClipPreviewVideoSource = {
   sourceType: "timeline";
   durationSeconds: number;

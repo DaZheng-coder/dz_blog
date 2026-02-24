@@ -2,7 +2,7 @@
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
-import type { ClipTrackClip } from "../shared/types";
+import type { ClipTextOverlay, ClipTrackClip } from "../shared/types";
 
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -14,6 +14,7 @@ type ExportRequestMessage = {
   type: "EXPORT";
   requestId: string;
   clips: ClipTrackClip[];
+  textOverlays: ClipTextOverlay[];
 };
 
 type WorkerMessage =
@@ -90,7 +91,8 @@ function buildSegmentPlan(clips: ClipTrackClip[]) {
 
 function buildFilterComplex(
   plan: ReturnType<typeof buildSegmentPlan>,
-  includeClipAudio: boolean
+  includeClipAudio: boolean,
+  textOverlays: ClipTextOverlay[]
 ) {
   const filters: string[] = [];
   const concatInputs: string[] = [];
@@ -136,7 +138,40 @@ function buildFilterComplex(
     segmentIndex += 1;
   }
 
-  return `${filters.join(";")};${concatInputs.join("")}concat=n=${segmentIndex}:v=1:a=1[v][a]`;
+  const concatLabel = "vbase";
+  const filterPrefix = `${filters.join(";")};${concatInputs.join("")}concat=n=${segmentIndex}:v=1:a=1[${concatLabel}][a]`;
+
+  const overlayFilters: string[] = [];
+  if (textOverlays.length > 0) {
+    let inputLabel = concatLabel;
+    for (let index = 0; index < textOverlays.length; index += 1) {
+      const overlay = textOverlays[index];
+      const outputLabel =
+        index === textOverlays.length - 1 ? "v" : `vtxt${index}`;
+      const safeText = overlay.text
+        .replace(/\\/g, "\\\\")
+        .replace(/:/g, "\\:")
+        .replace(/'/g, "\\'")
+        .replace(/\n/g, "\\n");
+      const x = `(w*${(overlay.xPercent / 100).toFixed(4)})-text_w/2`;
+      const y = `(h*${(overlay.yPercent / 100).toFixed(4)})-text_h/2`;
+      overlayFilters.push(
+        `[${inputLabel}]drawtext=text='${safeText}':x=${x}:y=${y}:fontsize=${Math.max(
+          12,
+          Math.round(overlay.fontSize)
+        )}:fontcolor=${overlay.color}:borderw=2:bordercolor=black@0.65:enable='between(t,${overlay.startSeconds.toFixed(
+          3
+        )},${overlay.endSeconds.toFixed(3)})'[${outputLabel}]`
+      );
+      inputLabel = outputLabel;
+    }
+  }
+
+  if (overlayFilters.length === 0) {
+    return `${filterPrefix};[${concatLabel}]copy[v]`;
+  }
+
+  return `${filterPrefix};${overlayFilters.join(";")}`;
 }
 
 async function getFfmpeg(requestId: string) {
@@ -162,7 +197,11 @@ async function getFfmpeg(requestId: string) {
   return ffmpegLoadingPromise;
 }
 
-async function runExport(requestId: string, clips: ClipTrackClip[]) {
+async function runExport(
+  requestId: string,
+  clips: ClipTrackClip[],
+  textOverlays: ClipTextOverlay[]
+) {
   if (isExporting) {
     throw new Error("已有导出任务正在执行");
   }
@@ -176,6 +215,7 @@ async function runExport(requestId: string, clips: ClipTrackClip[]) {
     console.log("[clip-export-worker] start", {
       requestId,
       clipCount: clips.length,
+      textOverlayCount: textOverlays.length,
     });
     if (clips.length === 0) {
       throw new Error("时间轴没有片段可导出");
@@ -226,7 +266,11 @@ async function runExport(requestId: string, clips: ClipTrackClip[]) {
     tempFiles.push(outputFile);
 
     const buildArgs = (includeClipAudio: boolean) => {
-      const filterComplex = buildFilterComplex(plan, includeClipAudio);
+      const filterComplex = buildFilterComplex(
+        plan,
+        includeClipAudio,
+        textOverlays
+      );
       return [
         ...inputArgs,
         "-filter_complex",
@@ -303,7 +347,11 @@ workerScope.onmessage = (event: MessageEvent<ExportRequestMessage>) => {
     return;
   }
 
-  void runExport(message.requestId, message.clips).catch((error: unknown) => {
+  void runExport(
+    message.requestId,
+    message.clips,
+    message.textOverlays || []
+  ).catch((error: unknown) => {
     const errorMessage =
       error instanceof Error ? error.message : "导出失败，请稍后重试";
     console.error("[clip-export-worker] failed", {

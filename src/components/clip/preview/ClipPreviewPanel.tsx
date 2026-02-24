@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { ClipPanelFrame } from "../shared/ClipPanelFrame";
 import { useClipEditorStore } from "../store/clipEditorStore";
 import { formatDuration } from "../shared/time";
@@ -20,6 +21,9 @@ export function ClipPreviewPanel() {
   const setTimelinePlaying = useClipEditorStore(
     (state) => state.setTimelinePlaying
   );
+  const textOverlays = useClipEditorStore((state) => state.textOverlays);
+  const setTextOverlays = useClipEditorStore((state) => state.setTextOverlays);
+  const previewStageRef = useRef<HTMLDivElement>(null);
   const timelineSource =
     previewSource?.sourceType === "timeline" ? previewSource : null;
   const {
@@ -34,6 +38,53 @@ export function ClipPreviewPanel() {
     timelinePlaying,
     onToggleTimelinePlaying: setTimelinePlaying,
   });
+
+  const activeTextOverlays = textOverlays.filter(
+    (overlay) =>
+      timelineCurrentSeconds >= overlay.startSeconds &&
+      timelineCurrentSeconds <= overlay.endSeconds
+  );
+
+  const handleOverlayDragStart = (
+    event: React.MouseEvent<HTMLDivElement>,
+    overlayId: string
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const stage = previewStageRef.current;
+    if (!stage) {
+      return;
+    }
+
+    const rect = stage.getBoundingClientRect();
+    const updatePosition = (clientX: number, clientY: number) => {
+      const xPercent = Math.max(
+        0,
+        Math.min(100, ((clientX - rect.left) / rect.width) * 100)
+      );
+      const yPercent = Math.max(
+        0,
+        Math.min(100, ((clientY - rect.top) / rect.height) * 100)
+      );
+      setTextOverlays((prev) =>
+        prev.map((overlay) =>
+          overlay.id === overlayId ? { ...overlay, xPercent, yPercent } : overlay
+        )
+      );
+    };
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      updatePosition(moveEvent.clientX, moveEvent.clientY);
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
 
   return (
     <ClipPanelFrame
@@ -68,14 +119,37 @@ export function ClipPreviewPanel() {
                       空白帧预览
                     </div>
                   ) : (
-                    <video
-                      key={`${timelineSource?.sourceType}-${timelineSource?.objectUrl}`}
-                      ref={videoRef}
-                      src={timelineSource?.objectUrl}
-                      className="h-full w-full object-contain"
-                      playsInline
-                      muted
-                    />
+                    <div ref={previewStageRef} className="relative h-full w-full">
+                      <video
+                        key={`${timelineSource?.sourceType}-${timelineSource?.objectUrl}`}
+                        ref={videoRef}
+                        src={timelineSource?.objectUrl}
+                        className="h-full w-full object-contain"
+                        playsInline
+                        muted
+                      />
+                      {activeTextOverlays.map((overlay) => (
+                        <div
+                          key={overlay.id}
+                          className="absolute cursor-move select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
+                          style={{
+                            left: `${overlay.xPercent}%`,
+                            top: `${overlay.yPercent}%`,
+                            transform: "translate(-50%, -50%)",
+                            color: overlay.color,
+                            fontSize: `${overlay.fontSize}px`,
+                            fontWeight: 600,
+                            textAlign: "center",
+                            whiteSpace: "pre-wrap",
+                          }}
+                          onMouseDown={(event) =>
+                            handleOverlayDragStart(event, overlay.id)
+                          }
+                        >
+                          {overlay.text}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </>
               )}

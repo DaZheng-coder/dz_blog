@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useClipEditorStore } from "../store/clipEditorStore";
 import { ClipExportProgressModal } from "./ClipExportProgressModal";
 import { ClipMenuBrand } from "./ClipMenuBrand";
+import { ClipTextOverlayModal } from "./ClipTextOverlayModal";
 import { menuItems } from "../shared/data";
 import { exportTimelineToMp4 } from "./exportTimelineToMp4";
 import { subtleButtonClass } from "../shared/styles";
@@ -12,11 +13,18 @@ export function ClipMenu() {
   const [exportProgress, setExportProgress] = useState(0);
   const [exportMessage, setExportMessage] = useState("等待导出");
   const [exportError, setExportError] = useState<string | null>(null);
+  const [showTextModal, setShowTextModal] = useState(false);
   const [exportedFile, setExportedFile] = useState<{
     blob: Blob;
     filename: string;
   } | null>(null);
   const timelineClips = useClipEditorStore((state) => state.timelineClips);
+  const textOverlays = useClipEditorStore((state) => state.textOverlays);
+  const timelineCurrentTimeSeconds = useClipEditorStore(
+    (state) => state.timelineCurrentTimeSeconds
+  );
+  const addTextOverlay = useClipEditorStore((state) => state.addTextOverlay);
+  const setTextOverlays = useClipEditorStore((state) => state.setTextOverlays);
 
   const handleDownloadExported = () => {
     if (!exportedFile) {
@@ -44,6 +52,7 @@ export function ClipMenu() {
     try {
       setIsExporting(true);
       const result = await exportTimelineToMp4(timelineClips, {
+        textOverlays,
         onProgress: ({ progress, message }) => {
           setExportProgress(progress);
           setExportMessage(message);
@@ -62,6 +71,20 @@ export function ClipMenu() {
     }
   };
 
+  const handleAddText = (text: string) => {
+    const startSeconds = Math.max(0, timelineCurrentTimeSeconds || 0);
+    const duration = 3;
+    addTextOverlay({
+      text: text.trim(),
+      startSeconds,
+      endSeconds: startSeconds + duration,
+      xPercent: 50,
+      yPercent: 85,
+      fontSize: 40,
+      color: "#ffffff",
+    });
+  };
+
   return (
     <>
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 px-3 md:px-5">
@@ -69,7 +92,11 @@ export function ClipMenu() {
 
         <div className="hidden items-center gap-2 md:flex">
           {menuItems.map((item) => (
-            <button key={item} className={subtleButtonClass}>
+            <button
+              key={item}
+              className={subtleButtonClass}
+              onClick={item === "文本" ? () => setShowTextModal(true) : undefined}
+            >
               {item}
             </button>
           ))}
@@ -95,6 +122,26 @@ export function ClipMenu() {
         downloadFilename={exportedFile?.filename || null}
         onDownload={handleDownloadExported}
         onClose={() => setShowExportModal(false)}
+      />
+
+      <ClipTextOverlayModal
+        isOpen={showTextModal}
+        currentTimeSeconds={timelineCurrentTimeSeconds}
+        overlays={textOverlays}
+        onClose={() => setShowTextModal(false)}
+        onAdd={handleAddText}
+        onUpdate={(overlayId, patch) =>
+          setTextOverlays((prev) =>
+            prev.map((overlay) =>
+              overlay.id === overlayId ? { ...overlay, ...patch } : overlay
+            )
+          )
+        }
+        onDelete={(overlayId) =>
+          setTextOverlays((prev) =>
+            prev.filter((overlay) => overlay.id !== overlayId)
+          )
+        }
       />
     </>
   );
