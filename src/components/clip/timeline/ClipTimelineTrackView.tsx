@@ -1,4 +1,5 @@
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useClipEditorStore } from "../store/clipEditorStore";
 import { ClipTimelineLane } from "./ClipTimelineLane";
 import { ClipTimelinePlayhead } from "./ClipTimelinePlayhead";
@@ -22,53 +23,46 @@ const CUT_CURSOR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 
 const CUT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(CUT_CURSOR_SVG)}") 10 10, crosshair`;
 
 export function ClipTimelineTrackView() {
-  const draggingAsset = useClipEditorStore((state) => state.draggingAsset);
-  const selectedTimelineClipId = useClipEditorStore(
-    (state) => state.selectedTimelineClipId
-  );
-  const selectedTimelineClipIds = useClipEditorStore(
-    (state) => state.selectedTimelineClipIds
-  );
-  const selectedTimelineTrack = useClipEditorStore(
-    (state) => state.selectedTimelineTrack
-  );
-  const timelineClips = useClipEditorStore((state) => state.timelineClips);
-  const audioTimelineClips = useClipEditorStore(
-    (state) => state.audioTimelineClips
-  );
-  const timelinePlaying = useClipEditorStore((state) => state.timelinePlaying);
-  const timelineToolMode = useClipEditorStore(
-    (state) => state.timelineToolMode
-  );
-  const setDraggingAsset = useClipEditorStore(
-    (state) => state.setDraggingAsset
-  );
-  const setTimelinePlaying = useClipEditorStore(
-    (state) => state.setTimelinePlaying
-  );
-  const setTimelineToolMode = useClipEditorStore(
-    (state) => state.setTimelineToolMode
-  );
-  const setTrackTotalDurationSeconds = useClipEditorStore(
-    (state) => state.setTrackTotalDurationSeconds
-  );
-  const setTimelineClips = useClipEditorStore(
-    (state) => state.setTimelineClips
-  );
-  const setAudioTimelineClips = useClipEditorStore(
-    (state) => state.setAudioTimelineClips
-  );
-  const setSelectedTimelineClip = useClipEditorStore(
-    (state) => state.setSelectedTimelineClip
-  );
-  const previewTimelineClip = useClipEditorStore(
-    (state) => state.previewTimelineClip
-  );
-  const previewEmptyFrame = useClipEditorStore(
-    (state) => state.previewEmptyFrame
-  );
-  const syncTimelineFrame = useClipEditorStore(
-    (state) => state.syncTimelineFrame
+  const {
+    draggingAsset,
+    selectedTimelineClipId,
+    selectedTimelineClipIds,
+    selectedTimelineTrack,
+    timelineClips,
+    audioTimelineClips,
+    timelinePlaying,
+    timelineToolMode,
+    setDraggingAsset,
+    setTimelinePlaying,
+    setTimelineToolMode,
+    setTrackTotalDurationSeconds,
+    setTimelineClips,
+    setAudioTimelineClips,
+    setSelectedTimelineClip,
+    previewTimelineClip,
+    previewEmptyFrame,
+    syncTimelineFrame,
+  } = useClipEditorStore(
+    useShallow((state) => ({
+      draggingAsset: state.draggingAsset,
+      selectedTimelineClipId: state.selectedTimelineClipId,
+      selectedTimelineClipIds: state.selectedTimelineClipIds,
+      selectedTimelineTrack: state.selectedTimelineTrack,
+      timelineClips: state.timelineClips,
+      audioTimelineClips: state.audioTimelineClips,
+      timelinePlaying: state.timelinePlaying,
+      timelineToolMode: state.timelineToolMode,
+      setDraggingAsset: state.setDraggingAsset,
+      setTimelinePlaying: state.setTimelinePlaying,
+      setTimelineToolMode: state.setTimelineToolMode,
+      setTrackTotalDurationSeconds: state.setTrackTotalDurationSeconds,
+      setTimelineClips: state.setTimelineClips,
+      setAudioTimelineClips: state.setAudioTimelineClips,
+      setSelectedTimelineClip: state.setSelectedTimelineClip,
+      previewTimelineClip: state.previewTimelineClip,
+      previewEmptyFrame: state.previewEmptyFrame,
+      syncTimelineFrame: state.syncTimelineFrame,
+    }))
   );
 
   const playback = useTimelinePlayback({
@@ -161,20 +155,6 @@ export function ClipTimelineTrackView() {
     emitTimelineFrame: playback.emitTimelineFrame,
     clearSelection: () => setSelectedTimelineClip(null, null),
   });
-
-  useEffect(() => {
-    const videoEnd = timelineClips.reduce(
-      (maxEnd, clip) =>
-        Math.max(maxEnd, clip.startSeconds + clip.durationSeconds),
-      0
-    );
-    const audioEnd = audioTimelineClips.reduce(
-      (maxEnd, clip) =>
-        Math.max(maxEnd, clip.startSeconds + clip.durationSeconds),
-      0
-    );
-    setTrackTotalDurationSeconds(Math.max(videoEnd, audioEnd));
-  }, [audioTimelineClips, setTrackTotalDurationSeconds, timelineClips]);
 
   useTimelineHotkeys({
     selectedTimelineTrack,

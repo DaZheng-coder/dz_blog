@@ -6,7 +6,7 @@ export function ClipMenuBrand() {
       </div>
       <div>
         <p className="text-xs tracking-[0.16em] text-[#9ca3af]">CLIP STUDIO</p>
-        <p className="text-sm font-medium text-white">城市旅拍 - v3</p>
+        <p className="text-sm font-medium text-white">本地剪辑 D E M O </p>
       </div>
     </div>
   );

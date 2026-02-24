@@ -12,7 +12,25 @@ export function ClipMenu() {
   const [exportProgress, setExportProgress] = useState(0);
   const [exportMessage, setExportMessage] = useState("等待导出");
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportedFile, setExportedFile] = useState<{
+    blob: Blob;
+    filename: string;
+  } | null>(null);
   const timelineClips = useClipEditorStore((state) => state.timelineClips);
+
+  const handleDownloadExported = () => {
+    if (!exportedFile) {
+      return;
+    }
+    const url = URL.createObjectURL(exportedFile.blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = exportedFile.filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const handleExport = async () => {
     if (isExporting) {
@@ -22,14 +40,16 @@ export function ClipMenu() {
     setExportProgress(0);
     setExportMessage("准备导出...");
     setExportError(null);
+    setExportedFile(null);
     try {
       setIsExporting(true);
-      await exportTimelineToMp4(timelineClips, {
+      const result = await exportTimelineToMp4(timelineClips, {
         onProgress: ({ progress, message }) => {
           setExportProgress(progress);
           setExportMessage(message);
         },
       });
+      setExportedFile(result);
       setExportProgress(100);
       setExportMessage("导出完成");
     } catch (error) {
@@ -56,7 +76,6 @@ export function ClipMenu() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className={subtleButtonClass}>预览</button>
           <button
             className="cursor-pointer rounded-md bg-gradient-to-r from-[#22d3ee] to-[#3b82f6] px-3 py-1.5 text-xs font-semibold text-[#0b1220] disabled:cursor-not-allowed disabled:opacity-60"
             onClick={handleExport}
@@ -73,6 +92,8 @@ export function ClipMenu() {
         progress={exportProgress}
         message={exportMessage}
         error={exportError}
+        downloadFilename={exportedFile?.filename || null}
+        onDownload={handleDownloadExported}
         onClose={() => setShowExportModal(false)}
       />
     </>

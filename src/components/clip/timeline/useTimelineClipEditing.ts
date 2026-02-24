@@ -9,6 +9,36 @@ import type { ClipTrackClip } from "../shared/types";
 
 const MIN_CLIP_DURATION_SECONDS = 0.2;
 
+function splitClipAtTime(clip: ClipTrackClip, splitTime: number) {
+  const clipStart = clip.startSeconds;
+  const clipEnd = clip.startSeconds + clip.durationSeconds;
+  if (splitTime <= clipStart || splitTime >= clipEnd) {
+    return null;
+  }
+
+  const leftDurationSeconds = splitTime - clipStart;
+  const rightDurationSeconds = clipEnd - splitTime;
+  if (leftDurationSeconds <= 0 || rightDurationSeconds <= 0) {
+    return null;
+  }
+
+  const leftClip: ClipTrackClip = {
+    ...clip,
+    durationSeconds: leftDurationSeconds,
+    sourceEndSeconds: clip.sourceStartSeconds + leftDurationSeconds,
+  };
+  const rightClip: ClipTrackClip = {
+    ...clip,
+    id: crypto.randomUUID(),
+    startSeconds: splitTime,
+    sourceStartSeconds: clip.sourceStartSeconds + leftDurationSeconds,
+    sourceEndSeconds: clip.sourceEndSeconds,
+    durationSeconds: rightDurationSeconds,
+  };
+
+  return { leftClip, rightClip };
+}
+
 type UseTimelineClipEditingOptions = {
   clips: ClipTrackClip[];
   setClips: (
@@ -63,35 +93,14 @@ export function useTimelineClipEditing({
             continue;
           }
 
-          const clipStart = clip.startSeconds;
-          const clipEnd = clip.startSeconds + clip.durationSeconds;
-          if (splitTime <= clipStart || splitTime >= clipEnd) {
+          const splitResult = splitClipAtTime(clip, splitTime);
+          if (!splitResult) {
             continue;
           }
-
-          const leftDurationSeconds = splitTime - clipStart;
-          const rightDurationSeconds = clipEnd - splitTime;
-          if (leftDurationSeconds <= 0 || rightDurationSeconds <= 0) {
-            continue;
-          }
-
-          const leftClip: ClipTrackClip = {
-            ...clip,
-            durationSeconds: leftDurationSeconds,
-            sourceEndSeconds: clip.sourceStartSeconds + leftDurationSeconds,
-          };
-          const rightClip: ClipTrackClip = {
-            ...clip,
-            id: crypto.randomUUID(),
-            startSeconds: splitTime,
-            sourceStartSeconds: clip.sourceStartSeconds + leftDurationSeconds,
-            sourceEndSeconds: clip.sourceEndSeconds,
-            durationSeconds: rightDurationSeconds,
-          };
 
           didSplit = true;
-          rightClipForPreview = rightClip;
-          next.splice(index, 1, leftClip, rightClip);
+          rightClipForPreview = splitResult.rightClip;
+          next.splice(index, 1, splitResult.leftClip, splitResult.rightClip);
           break;
         }
         return didSplit ? next : prev;
@@ -279,35 +288,14 @@ export function useTimelineClipEditing({
         if (!isTargetClip) {
           continue;
         }
-        const clipStart = clip.startSeconds;
-        const clipEnd = clip.startSeconds + clip.durationSeconds;
-        if (splitTime <= clipStart || splitTime >= clipEnd) {
+        const splitResult = splitClipAtTime(clip, splitTime);
+        if (!splitResult) {
           continue;
         }
-
-        const leftDurationSeconds = splitTime - clipStart;
-        const rightDurationSeconds = clipEnd - splitTime;
-        if (leftDurationSeconds <= 0 || rightDurationSeconds <= 0) {
-          continue;
-        }
-
-        const leftClip: ClipTrackClip = {
-          ...clip,
-          durationSeconds: leftDurationSeconds,
-          sourceEndSeconds: clip.sourceStartSeconds + leftDurationSeconds,
-        };
-        const rightClip: ClipTrackClip = {
-          ...clip,
-          id: crypto.randomUUID(),
-          startSeconds: splitTime,
-          sourceStartSeconds: clip.sourceStartSeconds + leftDurationSeconds,
-          sourceEndSeconds: clip.sourceEndSeconds,
-          durationSeconds: rightDurationSeconds,
-        };
 
         didSplit = true;
-        rightClipForPreview = rightClip;
-        next.splice(index, 1, leftClip, rightClip);
+        rightClipForPreview = splitResult.rightClip;
+        next.splice(index, 1, splitResult.leftClip, splitResult.rightClip);
         index += 1;
       }
       return didSplit ? next : prev;
