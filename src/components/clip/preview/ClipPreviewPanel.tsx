@@ -9,6 +9,7 @@ import {
   PlayIcon,
   RewindIcon,
 } from "../shared/icons";
+import { ClipPreviewTextOverlayLayer } from "./ClipPreviewTextOverlayLayer";
 
 const SEEK_STEP_SECONDS = 2;
 
@@ -50,48 +51,6 @@ export function ClipPreviewPanel() {
   const showPreviewStage =
     Boolean(previewSource) || activeTextOverlays.length > 0;
 
-  const handleOverlayDragStart = (
-    event: React.MouseEvent<HTMLDivElement>,
-    overlayId: string
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const stage = previewStageRef.current;
-    if (!stage) {
-      return;
-    }
-
-    const rect = stage.getBoundingClientRect();
-    const updatePosition = (clientX: number, clientY: number) => {
-      const xPercent = Math.max(
-        0,
-        Math.min(100, ((clientX - rect.left) / rect.width) * 100)
-      );
-      const yPercent = Math.max(
-        0,
-        Math.min(100, ((clientY - rect.top) / rect.height) * 100)
-      );
-      setTextOverlays((prev) =>
-        prev.map((overlay) =>
-          overlay.id === overlayId
-            ? { ...overlay, xPercent, yPercent }
-            : overlay
-        )
-      );
-    };
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      updatePosition(moveEvent.clientX, moveEvent.clientY);
-    };
-
-    const handleMouseUp = () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-  };
 
   return (
     <ClipPanelFrame
@@ -152,29 +111,12 @@ export function ClipPreviewPanel() {
                       )}
                     </>
                   )}
-                  {activeTextOverlays.map((overlay) => (
-                    <div
-                      key={overlay.id}
-                      className="absolute cursor-move select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
-                      style={{
-                        left: `${overlay.xPercent}%`,
-                        top: `${overlay.yPercent}%`,
-                        transform: "translate(-50%, -50%)",
-                        color: overlay.color,
-                        fontSize: `${overlay.fontSize}px`,
-                        letterSpacing: `${overlay.letterSpacing ?? 0}px`,
-                        lineHeight: overlay.lineHeight ?? 1.2,
-                        fontWeight: 600,
-                        textAlign: "center",
-                        whiteSpace: "pre-wrap",
-                      }}
-                      onMouseDown={(event) =>
-                        handleOverlayDragStart(event, overlay.id)
-                      }
-                    >
-                      {overlay.text}
-                    </div>
-                  ))}
+                  <ClipPreviewTextOverlayLayer
+                    stageRef={previewStageRef}
+                    textOverlays={textOverlays}
+                    currentTimeSeconds={timelineCurrentTimeSeconds}
+                    setTextOverlays={setTextOverlays}
+                  />
                 </div>
               )}
             </div>
