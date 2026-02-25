@@ -4,8 +4,8 @@ import {
   type MouseEvent as ReactMouseEvent,
   type RefObject,
 } from "react";
-import { clamp, findActiveClipAtTime } from "./clipTimelineUtils";
-import type { ClipTrackClip } from "../shared/types";
+import { clamp, findActiveClipAtTime } from "../utils/clipTimelineUtils";
+import type { ClipTrackClip } from "../../shared/types";
 
 const MIN_CLIP_DURATION_SECONDS = 0.2;
 

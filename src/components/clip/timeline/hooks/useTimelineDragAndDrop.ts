@@ -6,10 +6,10 @@ import {
   type DragEvent,
   type RefObject,
 } from "react";
-import { clamp, readDragAssetFromDataTransfer } from "./clipTimelineUtils";
-import { TRACK_CLIP_MIME } from "../shared/dnd";
-import type { TimelineDragPreview } from "./ClipTimelineTrackView";
-import type { ClipDragAsset, ClipMediaType, ClipTrackClip } from "../shared/types";
+import { clamp, readDragAssetFromDataTransfer } from "../utils/clipTimelineUtils";
+import { TRACK_CLIP_MIME } from "../../shared/dnd";
+import type { TimelineDragPreview } from "../components/ClipTimelineTrackView";
+import type { ClipDragAsset, ClipMediaType, ClipTrackClip } from "../../shared/types";
 
 const PREVIEW_INSERT_ID = "__preview_insert_clip__";
 

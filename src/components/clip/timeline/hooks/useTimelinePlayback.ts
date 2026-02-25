@@ -15,14 +15,14 @@ import {
   PLAYHEAD_PADDING,
   RULER_MINOR_STEP_SECONDS,
   RULER_STEP_SECONDS,
-} from "./clipTimelineConfig";
+} from "../utils/clipTimelineConfig";
 import {
   buildRulerMarks,
   buildRulerTickMarks,
   clamp,
   findActiveClipAtTime,
-} from "./clipTimelineUtils";
-import type { ClipTrackClip } from "../shared/types";
+} from "../utils/clipTimelineUtils";
+import type { ClipTrackClip } from "../../shared/types";
 
 type UseTimelinePlaybackOptions = {
   clips: ClipTrackClip[];

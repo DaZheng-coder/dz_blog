@@ -6,10 +6,10 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { MIN_CLIP_WIDTH } from "./clipTimelineConfig";
+import { MIN_CLIP_WIDTH } from "../utils/clipTimelineConfig";
 import { ClipTimelineClipItem } from "./ClipTimelineClipItem";
 import { ClipTimelineDragPreviewItem } from "./ClipTimelineDragPreviewItem";
-import type { ClipTrackClip } from "../shared/types";
+import type { ClipTrackClip } from "../../shared/types";
 
 type TimelineDragPreview = {
   title: string;

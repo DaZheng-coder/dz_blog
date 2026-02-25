@@ -3,7 +3,7 @@ import { useClipEditorStore } from "../store/clipEditorStore";
 import { ClipExportProgressModal } from "./ClipExportProgressModal";
 import { ClipMenuBrand } from "./ClipMenuBrand";
 import { ClipTextOverlayModal } from "./ClipTextOverlayModal";
-import { menuItems, type ClipMenuItemId } from "../shared/data";
+import { menuItems, type ClipMenuItemId } from "./menuItems";
 import { exportTimelineToMp4 } from "./exportTimelineToMp4";
 import { useTextOverlayActions } from "../text/useTextOverlayActions";
 import { ClipButton } from "../shared/ClipButton";

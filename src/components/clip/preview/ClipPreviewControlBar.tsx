@@ -4,7 +4,7 @@ import {
   PauseIcon,
   PlayIcon,
   RewindIcon,
-} from "../shared/icons";
+} from "./icons";
 
 const SEEK_STEP_SECONDS = 2;
 

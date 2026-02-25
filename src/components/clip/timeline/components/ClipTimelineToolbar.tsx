@@ -1,11 +1,11 @@
 import type { SetStateAction } from "react";
-import { DEFAULT_ZOOM } from "./clipTimelineConfig";
-import { clamp, formatTime } from "./clipTimelineUtils";
-import PointerIcon from "../../../assets/pointer.svg?react";
-import ClipIcon from "../../../assets/clip.svg?react";
-import IncreaseIcon from "../../../assets/increase.svg?react";
-import DecreaseIcon from "../../../assets/decrease.svg?react";
-import { ClipButton } from "../shared/ClipButton";
+import { DEFAULT_ZOOM } from "../utils/clipTimelineConfig";
+import { clamp, formatTime } from "../utils/clipTimelineUtils";
+import PointerIcon from "../../../../assets/pointer.svg?react";
+import ClipIcon from "../../../../assets/clip.svg?react";
+import IncreaseIcon from "../../../../assets/increase.svg?react";
+import DecreaseIcon from "../../../../assets/decrease.svg?react";
+import { ClipButton } from "../../shared/ClipButton";
 
 type ClipTimelineToolbarProps = {
   timelineToolMode: "select" | "cut";

@@ -1,5 +1,5 @@
 import { useCallback, type MouseEvent as ReactMouseEvent } from "react";
-import type { ClipTrackClip } from "../shared/types";
+import type { ClipTrackClip } from "../../shared/types";
 
 type UseTimelineSelectionActionsOptions = {
   timelineToolMode: "select" | "cut";

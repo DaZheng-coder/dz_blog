@@ -1,4 +1,4 @@
-import { formatTime } from "./clipTimelineUtils";
+import { formatTime } from "../utils/clipTimelineUtils";
 import type { TimelineDragPreview } from "./ClipTimelineTrackView";
 
 const MIN_RENDER_WIDTH_PX = 1;

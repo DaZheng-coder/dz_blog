@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { findActiveClipAtTime } from "./clipTimelineUtils";
-import type { ClipTrackClip } from "../shared/types";
+import { findActiveClipAtTime } from "../utils/clipTimelineUtils";
+import type { ClipTrackClip } from "../../shared/types";
 
 const AUDIO_SYNC_DRIFT_SECONDS = 0.15;
 

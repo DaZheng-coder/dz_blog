@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import type { ClipTextOverlay, ClipTrackClip } from "../shared/types";
+import type { ClipTextOverlay, ClipTrackClip } from "../../shared/types";
 import {
   applyTextTrackClipsToOverlays,
   toTextTrackClips,
-} from "./textTrackAdapter";
+} from "../utils/textTrackAdapter";
 
 type TextTrackEditMode = "resize-left" | "resize-right";
 

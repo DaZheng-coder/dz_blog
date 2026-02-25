@@ -2,9 +2,9 @@ import type {
   DragEvent as ReactDragEvent,
   MouseEvent as ReactMouseEvent,
 } from "react";
-import { TRACK_COLORS } from "./clipTimelineConfig";
-import type { ClipTrackClip } from "../shared/types";
-import TextIcon from "../../../assets/text.svg?react";
+import { TRACK_COLORS } from "../utils/clipTimelineConfig";
+import type { ClipTrackClip } from "../../shared/types";
+import TextIcon from "../../../../assets/text.svg?react";
 
 type ClipTimelineTextClipItemProps = {
   clip: ClipTrackClip;

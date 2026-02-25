@@ -1,5 +1,5 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { formatTime } from "./clipTimelineUtils";
+import { formatTime } from "../utils/clipTimelineUtils";
 
 type ClipTimelineRulerProps = {
   rulerMarks: number[];

@@ -1,4 +1,4 @@
-import { ClipTimelineTrackView } from "./ClipTimelineTrackView";
+import { ClipTimelineTrackView } from "./components/ClipTimelineTrackView";
 
 export function ClipTimeline() {
   return (

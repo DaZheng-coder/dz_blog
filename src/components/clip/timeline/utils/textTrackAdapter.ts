@@ -1,4 +1,4 @@
-import type { ClipTextOverlay, ClipTrackClip } from "../shared/types";
+import type { ClipTextOverlay, ClipTrackClip } from "../../shared/types";
 
 export function toTextTrackClip(
   overlay: ClipTextOverlay,

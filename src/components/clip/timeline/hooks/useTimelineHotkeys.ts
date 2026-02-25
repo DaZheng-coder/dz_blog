@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { isEditableElement } from "./clipTimelineUtils";
+import { isEditableElement } from "../utils/clipTimelineUtils";
 
 type UseTimelineHotkeysOptions = {
   selectedTimelineTrack: "video" | "audio" | "text" | null;

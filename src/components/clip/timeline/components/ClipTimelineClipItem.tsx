@@ -4,11 +4,11 @@ import {
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { TRACK_COLORS } from "./clipTimelineConfig";
-import { formatTime } from "./clipTimelineUtils";
-import type { ClipTrackClip } from "../shared/types";
-import VideoIcon from "../../../assets/video.svg?react";
-import AudioIcon from "../../../assets/audio.svg?react";
+import { TRACK_COLORS } from "../utils/clipTimelineConfig";
+import { formatTime } from "../utils/clipTimelineUtils";
+import type { ClipTrackClip } from "../../shared/types";
+import VideoIcon from "../../../../assets/video.svg?react";
+import AudioIcon from "../../../../assets/audio.svg?react";
 
 const TIMELINE_FRAME_TILE_WIDTH = 32;
 const AUDIO_BAR_WIDTH = 3;

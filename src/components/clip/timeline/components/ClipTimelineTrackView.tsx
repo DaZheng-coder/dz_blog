@@ -5,21 +5,21 @@ import {
   type CSSProperties,
 } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { useClipEditorStore } from "../store/clipEditorStore";
+import { useClipEditorStore } from "../../store/clipEditorStore";
 import { ClipTimelineLane } from "./ClipTimelineLane";
 import { ClipTimelinePlayhead } from "./ClipTimelinePlayhead";
 import { ClipTimelineRuler } from "./ClipTimelineRuler";
 import { ClipTimelineTrackLabels } from "./ClipTimelineTrackLabels";
 import { ClipTimelineTextClipItem } from "./ClipTimelineTextClipItem";
 import { ClipTimelineToolbar } from "./ClipTimelineToolbar";
-import { TRACK_COLORS } from "./clipTimelineConfig";
-import { useTimelineAudioPlayback } from "./useTimelineAudioPlayback";
-import { useTimelineClipEditing } from "./useTimelineClipEditing";
-import { useTimelineDragAndDrop } from "./useTimelineDragAndDrop";
-import { useTimelineHotkeys } from "./useTimelineHotkeys";
-import { useTimelinePlayback } from "./useTimelinePlayback";
-import { useTimelineSelectionActions } from "./useTimelineSelectionActions";
-import { useTextTrackEditing } from "./useTextTrackEditing";
+import { TRACK_COLORS } from "../utils/clipTimelineConfig";
+import { useTimelineAudioPlayback } from "../hooks/useTimelineAudioPlayback";
+import { useTimelineClipEditing } from "../hooks/useTimelineClipEditing";
+import { useTimelineDragAndDrop } from "../hooks/useTimelineDragAndDrop";
+import { useTimelineHotkeys } from "../hooks/useTimelineHotkeys";
+import { useTimelinePlayback } from "../hooks/useTimelinePlayback";
+import { useTimelineSelectionActions } from "../hooks/useTimelineSelectionActions";
+import { useTextTrackEditing } from "../hooks/useTextTrackEditing";
 
 export type TimelineDragPreview = {
   title: string;

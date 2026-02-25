@@ -1,4 +1,8 @@
-import type { ColorAdjustment, InspectorAnimation, InspectorMetric } from "./types";
+import type {
+  ColorAdjustment,
+  InspectorAnimation,
+  InspectorMetric,
+} from "../shared/types";
 
 export type ClipMenuItemId = "import" | "text" | "sticker" | "effect" | "audio";
 
