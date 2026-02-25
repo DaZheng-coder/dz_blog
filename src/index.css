@@ -1,12 +1,15 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap");
 
 :root {
-  --bg-base: #f5f2e9;
-  --text-base: #1f2321;
-  --text-muted: #4e5350;
-  --accent-neon: #65ff7f;
+  --bg-base: #0a0a0b;
+  --text-base: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --accent-neon: #f59e0b;
+  --font-heading: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-body: "DM Sans", "Avenir Next", "Segoe UI", sans-serif;
 
-  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -30,12 +33,102 @@ body {
 
 body {
   margin: 0;
-  background: radial-gradient(
-    circle at top right,
-    #f0f7e8 0%,
-    var(--bg-base) 45%
-  );
+  background: var(--bg-base);
   color: var(--text-base);
+}
+
+.blog-theme {
+  position: relative;
+  isolation: isolate;
+  font-family: var(--font-body);
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(circle at 15% 18%, rgba(245, 158, 11, 0.16), transparent 38%),
+    radial-gradient(circle at 83% 10%, rgba(245, 158, 11, 0.12), transparent 42%),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: auto, auto, 34px 34px, 34px 34px;
+}
+
+.blog-grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.blog-glow {
+  position: fixed;
+  width: 34rem;
+  height: 34rem;
+  border-radius: 999px;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.blog-glow-1 {
+  top: -14rem;
+  right: -10rem;
+  background: rgba(245, 158, 11, 0.26);
+}
+
+.blog-glow-2 {
+  bottom: 18%;
+  left: -12rem;
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.blog-theme h1,
+.blog-theme h2,
+.blog-theme h3,
+.blog-theme .blog-nav-brand {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+}
+
+.blog-nav-link {
+  position: relative;
+  color: #a1a1aa;
+  transition: color 200ms ease;
+}
+
+.blog-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -0.35rem;
+  width: 0;
+  height: 2px;
+  background: #f59e0b;
+  transition: width 200ms ease;
+}
+
+.blog-nav-link:hover {
+  color: #f4f4f5;
+}
+
+.blog-nav-link.active {
+  color: #f4f4f5;
+}
+
+.blog-nav-link.active::after,
+.blog-nav-link:hover::after {
+  width: 100%;
+}
+
+.carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #3f3f46;
+  transition: all 200ms ease;
+}
+
+.carousel-dot.active {
+  width: 24px;
+  border-radius: 999px;
+  background: #f59e0b;
 }
 
 @theme {
@@ -122,7 +215,7 @@ body {
 
 .card-interactive:hover {
   transform: translateY(-4px);
-  box-shadow: 0 14px 32px -24px rgba(15, 20, 17, 0.55);
+  box-shadow: 0 18px 38px -28px rgba(245, 158, 11, 0.35);
 }
 
 .stagger-grid > * {
@@ -162,7 +255,7 @@ body {
 .prose-article img {
   margin-top: 1rem;
   border-radius: 0.9rem;
-  border: 1px solid #d8d4cb;
+  border: 1px solid #27272a;
   transition: transform 260ms ease;
 }
 

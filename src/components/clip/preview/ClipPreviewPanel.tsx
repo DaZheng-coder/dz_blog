@@ -24,12 +24,6 @@ export function ClipPreviewPanel() {
   const setSelectedPreviewVideoInfo = useClipEditorStore(
     (state) => state.setSelectedPreviewVideoInfo
   );
-  const selectedTimelineTrack = useClipEditorStore(
-    (state) => state.selectedTimelineTrack
-  );
-  const selectedTimelineClipId = useClipEditorStore(
-    (state) => state.selectedTimelineClipId
-  );
   const selectedInspectorSticker = useClipEditorStore(
     (state) => state.selectedInspectorSticker
   );
@@ -69,8 +63,6 @@ export function ClipPreviewPanel() {
     Boolean(previewSource) ||
     activeTextOverlays.length > 0 ||
     activeStickerOverlays.length > 0;
-  const isVideoTimelineClipSelected =
-    selectedTimelineTrack === "video" && Boolean(selectedTimelineClipId);
 
   useEffect(() => {
     const stage = previewStageRef.current;
@@ -148,9 +140,6 @@ export function ClipPreviewPanel() {
                                   });
                                 }}
                               />
-                              {isVideoTimelineClipSelected ? (
-                                <div className="pointer-events-none absolute inset-0 border-2 border-[#67e8f9]/90" />
-                              ) : null}
                             </div>
                           ) : (
                             <div className="h-full w-full bg-black" />
