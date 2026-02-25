@@ -6,7 +6,7 @@ const DEFAULT_TEXT_OVERLAY_DURATION_SECONDS = 3;
 const DEFAULT_TEXT_OVERLAY_STYLE = {
   xPercent: 50,
   yPercent: 85,
-  fontSize: 20,
+  fontSize: 30,
   letterSpacing: 0,
   lineHeight: 1.2,
   color: "#ffffff",

@@ -1,6 +1,19 @@
 import type { ColorAdjustment, InspectorAnimation, InspectorMetric } from "./types";
 
-export const menuItems = ["导入", "文本", "贴纸", "特效", "音频"];
+export type ClipMenuItemId = "import" | "text" | "sticker" | "effect" | "audio";
+
+export type ClipMenuItem = {
+  id: ClipMenuItemId;
+  label: string;
+};
+
+export const menuItems: ClipMenuItem[] = [
+  { id: "import", label: "导入" },
+  { id: "text", label: "文本" },
+  { id: "sticker", label: "贴纸" },
+  { id: "effect", label: "特效" },
+  { id: "audio", label: "音频" },
+];
 
 export const inspectorMetrics: InspectorMetric[] = [
   { label: "播放速度", value: "1.00x" },

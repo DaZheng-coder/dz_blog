@@ -3,7 +3,7 @@ import { useClipEditorStore } from "../store/clipEditorStore";
 import { ClipExportProgressModal } from "./ClipExportProgressModal";
 import { ClipMenuBrand } from "./ClipMenuBrand";
 import { ClipTextOverlayModal } from "./ClipTextOverlayModal";
-import { menuItems } from "../shared/data";
+import { menuItems, type ClipMenuItemId } from "../shared/data";
 import { exportTimelineToMp4 } from "./exportTimelineToMp4";
 import { subtleButtonClass } from "../shared/styles";
 import { useTextOverlayActions } from "../text/useTextOverlayActions";
@@ -77,12 +77,12 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
     }
   };
 
-  const handleMenuAction = (item: string) => {
-    if (item === "导入") {
+  const handleMenuAction = (menuItemId: ClipMenuItemId) => {
+    if (menuItemId === "import") {
       onOpenImport();
       return;
     }
-    if (item === "文本") {
+    if (menuItemId === "text") {
       setShowTextModal(true);
     }
   };
@@ -99,11 +99,11 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
         <div className="hidden items-center gap-2 md:flex">
           {menuItems.map((item) => (
             <button
-              key={item}
+              key={item.id}
               className={subtleButtonClass}
-              onClick={() => handleMenuAction(item)}
+              onClick={() => handleMenuAction(item.id)}
             >
-              {item}
+              {item.label}
             </button>
           ))}
         </div>
