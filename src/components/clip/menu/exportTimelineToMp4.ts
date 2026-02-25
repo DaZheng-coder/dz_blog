@@ -1,4 +1,8 @@
-import type { ClipTextOverlay, ClipTrackClip } from "../shared/types";
+import type {
+  ClipStickerOverlay,
+  ClipTextOverlay,
+  ClipTrackClip,
+} from "../shared/types";
 
 type ExportProgressPayload = {
   progress: number;
@@ -7,6 +11,9 @@ type ExportProgressPayload = {
 
 type ExportTimelineOptions = {
   textOverlays?: ClipTextOverlay[];
+  stickerOverlays?: ClipStickerOverlay[];
+  previewStageWidth?: number;
+  previewStageHeight?: number;
   onProgress?: (payload: ExportProgressPayload) => void;
 };
 
@@ -20,6 +27,9 @@ type ExportRequestMessage = {
   requestId: string;
   clips: ClipTrackClip[];
   textOverlays: ClipTextOverlay[];
+  stickerOverlays: ClipStickerOverlay[];
+  previewStageWidth: number;
+  previewStageHeight: number;
 };
 
 type ExportWorkerMessage =
@@ -57,13 +67,20 @@ export async function exportTimelineToMp4(
   clips: ClipTrackClip[],
   options: ExportTimelineOptions = {}
 ): Promise<ExportTimelineResult> {
-  const { onProgress, textOverlays = [] } = options;
+  const { onProgress, textOverlays = [], stickerOverlays = [] } = options;
+  const previewStageWidth = Math.max(0, options.previewStageWidth ?? 0);
+  const previewStageHeight = Math.max(0, options.previewStageHeight ?? 0);
   const hasValidTextOverlay = textOverlays.some(
     (overlay) =>
       overlay.text.trim().length > 0 && overlay.endSeconds > overlay.startSeconds
   );
-  if (clips.length === 0 && !hasValidTextOverlay) {
-    throw new Error("时间轴没有片段或文本可导出");
+  const hasValidStickerOverlay = stickerOverlays.some(
+    (overlay) =>
+      overlay.sticker.trim().length > 0 &&
+      overlay.endSeconds > overlay.startSeconds
+  );
+  if (clips.length === 0 && !hasValidTextOverlay && !hasValidStickerOverlay) {
+    throw new Error("时间轴没有片段、文本或贴纸可导出");
   }
 
   const worker = getExportWorker();
@@ -72,6 +89,9 @@ export async function exportTimelineToMp4(
     requestId,
     clipCount: clips.length,
     textOverlayCount: textOverlays.length,
+    stickerOverlayCount: stickerOverlays.length,
+    previewStageWidth,
+    previewStageHeight,
   });
   onProgress?.({ progress: 1, message: "正在创建导出任务..." });
 
@@ -157,6 +177,9 @@ export async function exportTimelineToMp4(
       requestId,
       clips,
       textOverlays,
+      stickerOverlays,
+      previewStageWidth,
+      previewStageHeight,
     };
     worker.postMessage(message);
   });

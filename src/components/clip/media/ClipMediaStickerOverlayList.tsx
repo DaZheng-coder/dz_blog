@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import DeleteIcon from "../../../assets/delete.svg?react";
 import type { ClipStickerOverlay } from "../shared/types";
 import { formatTimelineRangeTime } from "../shared/time";
+import { STICKER_PRESETS } from "../sticker/stickerPresets";
 
 type ClipMediaStickerOverlayListProps = {
   stickerOverlays: ClipStickerOverlay[];
@@ -14,8 +15,6 @@ type ClipMediaStickerOverlayListProps = {
   ) => void;
   onDeleteStickerOverlay: (overlayId: string) => void;
 };
-
-const PRESET_STICKERS = ["😀", "😍", "🔥", "✨", "🎉", "👍", "💡", "🚀"];
 
 function toInputNumber(value: number) {
   return Number.isFinite(value) ? value : 0;
@@ -43,13 +42,19 @@ export function ClipMediaStickerOverlayList({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        {PRESET_STICKERS.map((sticker) => (
+        {STICKER_PRESETS.map((sticker) => (
           <button
-            key={sticker}
-            className="cursor-pointer rounded border border-white/15 bg-white/5 px-2 py-1 text-lg hover:border-[#22d3ee]/60"
-            onClick={() => onAddSticker(sticker)}
+            key={sticker.id}
+            className="cursor-pointer rounded border border-white/15 bg-white/5 p-1 hover:border-[#22d3ee]/60"
+            onClick={() => onAddSticker(sticker.src)}
+            title={sticker.label}
           >
-            {sticker}
+            <img
+              src={sticker.src}
+              alt={sticker.label}
+              className="h-8 w-8 object-contain"
+              draggable={false}
+            />
           </button>
         ))}
       </div>
@@ -70,7 +75,12 @@ export function ClipMediaStickerOverlayList({
               }`}
               onClick={() => onSelectSticker(overlay)}
             >
-              <span className="text-2xl">{overlay.sticker}</span>
+              <img
+                src={overlay.sticker}
+                alt="贴纸"
+                className="h-10 w-10 rounded object-contain"
+                draggable={false}
+              />
               <div className="space-y-1 text-[11px] text-[#9ca3af]">
                 <div>
                   {formatTimelineRangeTime(overlay.startSeconds)}～

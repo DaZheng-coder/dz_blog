@@ -11,7 +11,17 @@ export function ClipInspectorStickerSection({
 }: ClipInspectorStickerSectionProps) {
   return (
     <ClipInspectorSection title="贴纸信息">
-      <ClipInspectorInfoRow label="内容" value={sticker.sticker} />
+      <ClipInspectorInfoRow
+        label="内容"
+        value={
+          <img
+            src={sticker.sticker}
+            alt="贴纸"
+            className="h-7 w-7 object-contain"
+            draggable={false}
+          />
+        }
+      />
       <ClipInspectorInfoRow
         label="时间区间"
         value={`${formatTimelineRangeTime(sticker.startSeconds)} ~ ${formatTimelineRangeTime(

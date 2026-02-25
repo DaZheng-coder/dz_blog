@@ -1,5 +1,6 @@
 import DeleteIcon from "../../../assets/delete.svg?react";
 import type { ClipStickerOverlay } from "../shared/types";
+import { STICKER_PRESETS } from "../sticker/stickerPresets";
 
 type ClipStickerOverlayModalProps = {
   isOpen: boolean;
@@ -10,8 +11,6 @@ type ClipStickerOverlayModalProps = {
   onUpdate: (overlayId: string, patch: Partial<ClipStickerOverlay>) => void;
   onDelete: (overlayId: string) => void;
 };
-
-const PRESET_STICKERS = ["😀", "😍", "🔥", "✨", "🎉", "👍", "💡", "🚀"];
 
 function toInputNumber(value: number) {
   return Number.isFinite(value) ? value : 0;
@@ -53,13 +52,19 @@ export function ClipStickerOverlayModal({
         </div>
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          {PRESET_STICKERS.map((sticker) => (
+          {STICKER_PRESETS.map((sticker) => (
             <button
-              key={sticker}
-              className="cursor-pointer rounded border border-white/15 bg-white/5 px-2 py-1 text-lg hover:border-[#22d3ee]/60"
-              onClick={() => onAdd(sticker)}
+              key={sticker.id}
+              className="cursor-pointer rounded border border-white/15 bg-white/5 p-1 hover:border-[#22d3ee]/60"
+              onClick={() => onAdd(sticker.src)}
+              title={sticker.label}
             >
-              {sticker}
+              <img
+                src={sticker.src}
+                alt={sticker.label}
+                className="h-8 w-8 object-contain"
+                draggable={false}
+              />
             </button>
           ))}
         </div>
@@ -76,7 +81,12 @@ export function ClipStickerOverlayModal({
               key={overlay.id}
               className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-2 rounded border border-white/10 bg-white/[0.03] p-2"
             >
-              <span className="text-2xl">{overlay.sticker}</span>
+              <img
+                src={overlay.sticker}
+                alt="贴纸"
+                className="h-10 w-10 rounded object-contain"
+                draggable={false}
+              />
               <label className="flex items-center gap-1 text-[11px] text-[#9ca3af]">
                 大小
                 <input

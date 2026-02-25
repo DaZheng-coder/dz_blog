@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { ClipPanelFrame } from "../shared/ClipPanelFrame";
 import { useClipEditorStore } from "../store/clipEditorStore";
 import { useClipPreviewController } from "./useClipPreviewController";
@@ -36,6 +36,9 @@ export function ClipPreviewPanel() {
   const setStickerOverlays = useClipEditorStore(
     (state) => state.setStickerOverlays
   );
+  const setPreviewStageSize = useClipEditorStore(
+    (state) => state.setPreviewStageSize
+  );
   const previewStageRef = useRef<HTMLDivElement>(null);
   const timelineSource =
     previewSource?.sourceType === "timeline" ? previewSource : null;
@@ -60,6 +63,20 @@ export function ClipPreviewPanel() {
     Boolean(previewSource) ||
     activeTextOverlays.length > 0 ||
     activeStickerOverlays.length > 0;
+
+  useEffect(() => {
+    const stage = previewStageRef.current;
+    if (!stage) {
+      return;
+    }
+    const syncStageSize = () => {
+      setPreviewStageSize(stage.clientWidth, stage.clientHeight);
+    };
+    syncStageSize();
+    const observer = new ResizeObserver(syncStageSize);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [setPreviewStageSize, showPreviewStage]);
 
 
   return (

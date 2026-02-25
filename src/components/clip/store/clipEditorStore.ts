@@ -42,6 +42,8 @@ type ClipEditorStore = {
   timelineToolMode: "select" | "cut";
   timelineCurrentTimeSeconds: number;
   trackTotalDurationSeconds: number;
+  previewStageWidth: number;
+  previewStageHeight: number;
   setDraggingAsset: (asset: ClipDragAsset | null) => void;
   setTimelineClips: (
     updater:
@@ -76,6 +78,7 @@ type ClipEditorStore = {
   setSelectedInspectorSticker: (sticker: ClipStickerOverlay | null) => void;
   setTimelineToolMode: (mode: "select" | "cut") => void;
   setTrackTotalDurationSeconds: (durationSeconds: number) => void;
+  setPreviewStageSize: (width: number, height: number) => void;
   previewTimelineClip: (clip: ClipTrackClip) => void;
   previewEmptyFrame: (timeSeconds: number) => void;
   syncTimelineFrame: (payload: TimelineFramePayload) => void;
@@ -98,6 +101,8 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
   timelineToolMode: "select",
   timelineCurrentTimeSeconds: 0,
   trackTotalDurationSeconds: 0,
+  previewStageWidth: 0,
+  previewStageHeight: 0,
   setDraggingAsset: (asset) => set({ draggingAsset: asset }),
   setTimelineClips: (updater) =>
     set((state) => ({
@@ -174,6 +179,11 @@ export const useClipEditorStore = create<ClipEditorStore>((set) => ({
   setTimelineToolMode: (mode) => set({ timelineToolMode: mode }),
   setTrackTotalDurationSeconds: (durationSeconds) =>
     set({ trackTotalDurationSeconds: durationSeconds }),
+  setPreviewStageSize: (width, height) =>
+    set({
+      previewStageWidth: Math.max(0, Math.round(width)),
+      previewStageHeight: Math.max(0, Math.round(height)),
+    }),
   previewTimelineClip: (clip) =>
     set({
       previewSource: {

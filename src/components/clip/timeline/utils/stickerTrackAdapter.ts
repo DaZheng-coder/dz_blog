@@ -9,22 +9,14 @@ export function toStickerTrackClip(
   overlay: ClipStickerOverlay,
   minDurationSeconds: number
 ): ClipTrackClip {
-  return overlayToTrackClip(
-    overlay,
-    minDurationSeconds,
-    (item) => item.sticker || "贴纸"
-  );
+  return overlayToTrackClip(overlay, minDurationSeconds, () => "贴纸");
 }
 
 export function toStickerTrackClips(
   overlays: ClipStickerOverlay[],
   minDurationSeconds: number
 ): ClipTrackClip[] {
-  return overlaysToTrackClips(
-    overlays,
-    minDurationSeconds,
-    (overlay) => overlay.sticker || "贴纸"
-  );
+  return overlaysToTrackClips(overlays, minDurationSeconds, () => "贴纸");
 }
 
 export function applyStickerTrackClipsToOverlays(

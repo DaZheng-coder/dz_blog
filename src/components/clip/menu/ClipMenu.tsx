@@ -27,6 +27,12 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
     filename: string;
   } | null>(null);
   const timelineClips = useClipEditorStore((state) => state.timelineClips);
+  const previewStageWidth = useClipEditorStore(
+    (state) => state.previewStageWidth
+  );
+  const previewStageHeight = useClipEditorStore(
+    (state) => state.previewStageHeight
+  );
   const {
     textOverlays,
     timelineCurrentTimeSeconds,
@@ -68,6 +74,9 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
       setIsExporting(true);
       const result = await exportTimelineToMp4(timelineClips, {
         textOverlays,
+        stickerOverlays,
+        previewStageWidth,
+        previewStageHeight,
         onProgress: ({ progress, message }) => {
           setExportProgress(progress);
           setExportMessage(message);

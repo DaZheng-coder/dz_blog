@@ -2,7 +2,11 @@
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
-import type { ClipTextOverlay, ClipTrackClip } from "../shared/types";
+import type {
+  ClipStickerOverlay,
+  ClipTextOverlay,
+  ClipTrackClip,
+} from "../shared/types";
 
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -17,6 +21,9 @@ type ExportRequestMessage = {
   requestId: string;
   clips: ClipTrackClip[];
   textOverlays: ClipTextOverlay[];
+  stickerOverlays: ClipStickerOverlay[];
+  previewStageWidth: number;
+  previewStageHeight: number;
 };
 
 type WorkerMessage =
@@ -40,7 +47,7 @@ type WorkerMessage =
 
 const workerScope = self as DedicatedWorkerGlobalScope;
 let isExporting = false;
-let cachedFontData: Uint8Array | null = null;
+let cachedFontData: ArrayBuffer | null = null;
 
 function postMessageToMain(message: WorkerMessage, transfer?: Transferable[]) {
   workerScope.postMessage(message, transfer || []);
@@ -84,18 +91,19 @@ function normalizeDrawtextColor(color: string) {
 
 async function getFallbackFontData(requestId: string) {
   if (cachedFontData) {
-    return cachedFontData;
+    return new Uint8Array(cachedFontData.slice(0));
   }
   postProgress(requestId, 10, "正在加载导出字体...");
   const response = await fetch(FALLBACK_FONT_URL);
   if (!response.ok) {
     throw new Error(`字体下载失败: ${response.status}`);
   }
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const buffer = await response.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
   if (bytes.byteLength === 0) {
     throw new Error("字体文件为空");
   }
-  cachedFontData = bytes;
+  cachedFontData = buffer.slice(0);
   return bytes;
 }
 
@@ -110,7 +118,22 @@ function getTextTrackEndSeconds(textOverlays: ClipTextOverlay[]) {
   }, 0);
 }
 
-function buildSegmentPlan(clips: ClipTrackClip[], textOverlays: ClipTextOverlay[]) {
+function getStickerTrackEndSeconds(stickerOverlays: ClipStickerOverlay[]) {
+  return stickerOverlays.reduce((maxEnd, overlay) => {
+    const hasSticker = overlay.sticker.trim().length > 0;
+    const duration = overlay.endSeconds - overlay.startSeconds;
+    if (!hasSticker || duration <= 0) {
+      return maxEnd;
+    }
+    return Math.max(maxEnd, overlay.endSeconds);
+  }, 0);
+}
+
+function buildSegmentPlan(
+  clips: ClipTrackClip[],
+  textOverlays: ClipTextOverlay[],
+  stickerOverlays: ClipStickerOverlay[]
+) {
   const sorted = sortedClips(clips);
   const plan: Array<
     | { kind: "gap"; duration: number }
@@ -139,7 +162,8 @@ function buildSegmentPlan(clips: ClipTrackClip[], textOverlays: ClipTextOverlay[
   }
 
   const textEndSeconds = getTextTrackEndSeconds(textOverlays);
-  const timelineEndSeconds = Math.max(cursor, textEndSeconds);
+  const stickerEndSeconds = getStickerTrackEndSeconds(stickerOverlays);
+  const timelineEndSeconds = Math.max(cursor, textEndSeconds, stickerEndSeconds);
   const tailGap = Math.max(0, timelineEndSeconds - cursor);
   if (tailGap > 0) {
     plan.push({ kind: "gap", duration: tailGap });
@@ -152,8 +176,12 @@ function buildFilterComplex(
   plan: ReturnType<typeof buildSegmentPlan>,
   includeClipAudio: boolean,
   textOverlays: ClipTextOverlay[],
+  stickerOverlays: ClipStickerOverlay[],
+  previewStageWidth: number,
+  previewStageHeight: number,
   includeLineSpacing: boolean,
   textOverlayTextFiles: string[],
+  stickerOverlayInputs: Array<{ overlayId: string; inputIndex: number }>,
   fontFile: string
 ) {
   const filters: string[] = [];
@@ -204,23 +232,41 @@ function buildFilterComplex(
   const filterPrefix = `${filters.join(";")};${concatInputs.join("")}concat=n=${segmentIndex}:v=1:a=1[${concatLabel}][a]`;
 
   const overlayFilters: string[] = [];
+  let currentVideoLabel = concatLabel;
+  const normalizedPreviewWidth =
+    Number.isFinite(previewStageWidth) && previewStageWidth > 0
+      ? previewStageWidth
+      : WIDTH;
+  const normalizedPreviewHeight =
+    Number.isFinite(previewStageHeight) && previewStageHeight > 0
+      ? previewStageHeight
+      : HEIGHT;
+  const scaleX = WIDTH / normalizedPreviewWidth;
+  const scaleY = HEIGHT / normalizedPreviewHeight;
+  const overlayScale = Math.max(0.01, Math.min(scaleX, scaleY));
   const validTextOverlays = textOverlays.filter(
     (overlay) =>
       overlay.text.trim().length > 0 && overlay.endSeconds > overlay.startSeconds
   );
+  const validStickerOverlays = stickerOverlays.filter(
+    (overlay) =>
+      overlay.sticker.trim().length > 0 &&
+      overlay.endSeconds > overlay.startSeconds
+  );
   if (validTextOverlays.length > 0) {
-    let inputLabel = concatLabel;
     for (let index = 0; index < validTextOverlays.length; index += 1) {
       const overlay = validTextOverlays[index];
       const textFile = textOverlayTextFiles[index];
       if (!textFile) {
         continue;
       }
-      const outputLabel =
-        index === validTextOverlays.length - 1 ? "v" : `vtxt${index}`;
+      const outputLabel = `vtxt${index}`;
       const x = `(w*${(overlay.xPercent / 100).toFixed(4)})-text_w/2`;
       const y = `(h*${(overlay.yPercent / 100).toFixed(4)})-text_h/2`;
-      const fontSize = Math.max(12, Math.round(overlay.fontSize));
+      const fontSize = Math.max(
+        12,
+        Math.round((overlay.fontSize || 0) * overlayScale)
+      );
       const fontColor = normalizeDrawtextColor(overlay.color);
       const lineHeight = Number.isFinite(overlay.lineHeight)
         ? Math.max(0.8, Math.min(3, overlay.lineHeight))
@@ -234,19 +280,50 @@ function buildFilterComplex(
           ? `:line_spacing=${lineSpacing}`
           : "";
       overlayFilters.push(
-        `[${inputLabel}]drawtext=fontfile='${fontFile}':textfile='${textFile}':expansion=none:x=${x}:y=${y}:fontsize=${fontSize}${spacingOption}:fontcolor=${fontColor}:borderw=2:bordercolor=black@0.65:enable='between(t,${overlay.startSeconds.toFixed(
+        `[${currentVideoLabel}]drawtext=fontfile='${fontFile}':textfile='${textFile}':expansion=none:x=${x}:y=${y}:fontsize=${fontSize}${spacingOption}:fontcolor=${fontColor}:borderw=2:bordercolor=black@0.65:enable='between(t,${overlay.startSeconds.toFixed(
           3
         )},${overlay.endSeconds.toFixed(3)})'[${outputLabel}]`
       );
-      inputLabel = outputLabel;
+      currentVideoLabel = outputLabel;
+    }
+  }
+  if (validStickerOverlays.length > 0) {
+    for (let index = 0; index < validStickerOverlays.length; index += 1) {
+      const overlay = validStickerOverlays[index];
+      const inputMeta = stickerOverlayInputs.find(
+        (item) => item.overlayId === overlay.id
+      );
+      if (!inputMeta) {
+        continue;
+      }
+      const stickerLabel = `vstkimg${index}`;
+      const isLastSticker = index === validStickerOverlays.length - 1;
+      const outputLabel = isLastSticker ? "v" : `vstk${index}`;
+      const stickerWidth = Math.max(
+        16,
+        Math.round((overlay.size || 0) * overlayScale)
+      );
+      const x = `(W*${(overlay.xPercent / 100).toFixed(4)})-w/2`;
+      const y = `(H*${(overlay.yPercent / 100).toFixed(4)})-h/2`;
+      overlayFilters.push(
+        `[${inputMeta.inputIndex}:v]scale=w=${stickerWidth}:h=-1[${stickerLabel}]`
+      );
+      overlayFilters.push(
+        `[${currentVideoLabel}][${stickerLabel}]overlay=x=${x}:y=${y}:eof_action=repeat:enable='between(t,${overlay.startSeconds.toFixed(
+          3
+        )},${overlay.endSeconds.toFixed(3)})'[${outputLabel}]`
+      );
+      currentVideoLabel = outputLabel;
     }
   }
 
-  if (overlayFilters.length === 0) {
-    return `${filterPrefix};[${concatLabel}]copy[v]`;
+  if (currentVideoLabel !== "v") {
+    overlayFilters.push(`[${currentVideoLabel}]copy[v]`);
   }
 
-  return `${filterPrefix};${overlayFilters.join(";")}`;
+  return overlayFilters.length === 0
+    ? `${filterPrefix};[${concatLabel}]copy[v]`
+    : `${filterPrefix};${overlayFilters.join(";")}`;
 }
 
 async function getFfmpeg(requestId: string) {
@@ -263,7 +340,10 @@ async function getFfmpeg(requestId: string) {
 async function runExport(
   requestId: string,
   clips: ClipTrackClip[],
-  textOverlays: ClipTextOverlay[]
+  textOverlays: ClipTextOverlay[],
+  stickerOverlays: ClipStickerOverlay[],
+  previewStageWidth: number,
+  previewStageHeight: number
 ) {
   if (isExporting) {
     throw new Error("已有导出任务正在执行");
@@ -278,15 +358,23 @@ async function runExport(
     (overlay) =>
       overlay.text.trim().length > 0 && overlay.endSeconds > overlay.startSeconds
   );
+  const validStickerOverlays = stickerOverlays.filter(
+    (overlay) =>
+      overlay.sticker.trim().length > 0 &&
+      overlay.endSeconds > overlay.startSeconds
+  );
 
   try {
     console.log("[clip-export-worker] start", {
       requestId,
       clipCount: clips.length,
       textOverlayCount: textOverlays.length,
+      stickerOverlayCount: stickerOverlays.length,
+      previewStageWidth,
+      previewStageHeight,
     });
     postProgress(requestId, 2, "正在预处理时间线...");
-    const plan = buildSegmentPlan(clips, textOverlays);
+    const plan = buildSegmentPlan(clips, textOverlays, stickerOverlays);
     console.log("[clip-export-worker] plan", {
       requestId,
       segmentCount: plan.length,
@@ -357,7 +445,7 @@ async function runExport(
     tempFiles.push(fontFile);
     try {
       const fontData = await getFallbackFontData(requestId);
-      await ffmpeg.writeFile(fontFile, fontData);
+      await ffmpeg.writeFile(fontFile, new Uint8Array(fontData));
     } catch (error) {
       console.error("[clip-export-worker] write font failed", {
         requestId,
@@ -390,6 +478,38 @@ async function runExport(
       }
       textOverlayTextFiles.push(textFile);
     }
+    const stickerInputIndexBySrc = new Map<string, number>();
+    const stickerOverlayInputs: Array<{ overlayId: string; inputIndex: number }> =
+      [];
+    let nextInputIndex = clipSegments.length;
+    for (const overlay of validStickerOverlays) {
+      let stickerInputIndex = stickerInputIndexBySrc.get(overlay.sticker);
+      if (typeof stickerInputIndex !== "number") {
+        const stickerFile = `${filePrefix}_sticker_${stickerInputIndexBySrc.size}.png`;
+        await removeFileIfExists(stickerFile);
+        tempFiles.push(stickerFile);
+        try {
+          await ffmpeg.writeFile(stickerFile, await fetchFile(overlay.sticker));
+        } catch (error) {
+          console.error("[clip-export-worker] write sticker failed", {
+            requestId,
+            stickerFile,
+            stickerSrc: overlay.sticker,
+            error,
+            message: error instanceof Error ? error.message : String(error),
+          });
+          throw new Error(`写入贴纸素材失败: ${stickerFile}`);
+        }
+        inputArgs.push("-i", stickerFile);
+        stickerInputIndex = nextInputIndex;
+        stickerInputIndexBySrc.set(overlay.sticker, stickerInputIndex);
+        nextInputIndex += 1;
+      }
+      stickerOverlayInputs.push({
+        overlayId: overlay.id,
+        inputIndex: stickerInputIndex,
+      });
+    }
 
     const buildArgs = (
       includeClipAudio: boolean,
@@ -399,8 +519,12 @@ async function runExport(
         plan,
         includeClipAudio,
         textOverlays,
+        stickerOverlays,
+        previewStageWidth,
+        previewStageHeight,
         includeLineSpacing,
         textOverlayTextFiles,
+        stickerOverlayInputs,
         fontFile
       );
       return [
@@ -491,7 +615,7 @@ async function runExport(
       });
       postProgress(requestId, 72, "素材音轨异常，切换静音轨重试...");
       const lineSpacingUnsupported =
-        textOverlays.length > 0 &&
+        (textOverlays.length > 0 || stickerOverlays.length > 0) &&
         /line_spacing|Option not found|No such filter option/i.test(
           firstMessage
         );
@@ -513,7 +637,7 @@ async function runExport(
         });
         if (
           !lineSpacingUnsupported &&
-          textOverlays.length > 0 &&
+          (textOverlays.length > 0 || stickerOverlays.length > 0) &&
           /line_spacing|Option not found|No such filter option/i.test(
             secondMessage
           )
@@ -595,7 +719,10 @@ workerScope.onmessage = (event: MessageEvent<ExportRequestMessage>) => {
   void runExport(
     message.requestId,
     message.clips,
-    message.textOverlays || []
+    message.textOverlays || [],
+    message.stickerOverlays || [],
+    message.previewStageWidth,
+    message.previewStageHeight
   ).catch((error: unknown) => {
     const errorMessage =
       error instanceof Error ? error.message : "导出失败，请稍后重试";

@@ -123,7 +123,16 @@ export function ClipPreviewStickerOverlayLayer({
               }
             />
           ) : null}
-          {overlay.sticker}
+          <img
+            src={overlay.sticker}
+            alt="贴纸"
+            draggable={false}
+            className="pointer-events-none select-none object-contain"
+            style={{
+              width: `${Math.max(16, overlay.size)}px`,
+              height: `${Math.max(16, overlay.size)}px`,
+            }}
+          />
         </div>
       ))}
     </>
