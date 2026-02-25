@@ -5,8 +5,8 @@ import { ClipMenuBrand } from "./ClipMenuBrand";
 import { ClipTextOverlayModal } from "./ClipTextOverlayModal";
 import { menuItems, type ClipMenuItemId } from "../shared/data";
 import { exportTimelineToMp4 } from "./exportTimelineToMp4";
-import { subtleButtonClass } from "../shared/styles";
 import { useTextOverlayActions } from "../text/useTextOverlayActions";
+import { ClipButton } from "../shared/ClipButton";
 
 type ClipMenuProps = {
   onOpenImport: () => void;
@@ -98,13 +98,12 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
 
         <div className="hidden items-center gap-2 md:flex">
           {menuItems.map((item) => (
-            <button
+            <ClipButton
               key={item.id}
-              className={subtleButtonClass}
               onClick={() => handleMenuAction(item.id)}
             >
               {item.label}
-            </button>
+            </ClipButton>
           ))}
         </div>
 

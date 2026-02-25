@@ -1,11 +1,11 @@
 import type { SetStateAction } from "react";
 import { DEFAULT_ZOOM } from "./clipTimelineConfig";
 import { clamp, formatTime } from "./clipTimelineUtils";
-import { timelineZoomButtonClass } from "../shared/styles";
 import PointerIcon from "../../../assets/pointer.svg?react";
 import ClipIcon from "../../../assets/clip.svg?react";
 import IncreaseIcon from "../../../assets/increase.svg?react";
 import DecreaseIcon from "../../../assets/decrease.svg?react";
+import { ClipButton } from "../shared/ClipButton";
 
 type ClipTimelineToolbarProps = {
   timelineToolMode: "select" | "cut";
@@ -40,8 +40,8 @@ export function ClipTimelineToolbar({
         <span>缩放 {zoomPercent}%</span>
       </div>
       <div className="flex items-center gap-2">
-        <button
-          className={timelineZoomButtonClass}
+        <ClipButton
+          variant="timeline-zoom"
           aria-label="选择工具"
           onClick={onSelectTool}
         >
@@ -50,9 +50,9 @@ export function ClipTimelineToolbar({
               timelineToolMode === "select" ? "text-[#67e8f9]" : "text-white"
             }`}
           />
-        </button>
-        <button
-          className={timelineZoomButtonClass}
+        </ClipButton>
+        <ClipButton
+          variant="timeline-zoom"
           aria-label="切割工具"
           onClick={onCutTool}
         >
@@ -61,16 +61,16 @@ export function ClipTimelineToolbar({
               timelineToolMode === "cut" ? "text-[#67e8f9]" : "text-white"
             }`}
           />
-        </button>
+        </ClipButton>
         <div className="h-5 w-[1px] bg-white/10 mx-2"></div>
-        <button
-          className={timelineZoomButtonClass}
+        <ClipButton
+          variant="timeline-zoom"
           onClick={() =>
             setPixelsPerSecond((prev) => clamp(prev + 2, minZoom, maxZoom))
           }
         >
           <IncreaseIcon className="h-4 w-4 fill-current" />
-        </button>
+        </ClipButton>
         <input
           type="range"
           min={minZoom}
@@ -81,14 +81,14 @@ export function ClipTimelineToolbar({
           className="h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-white/15 accent-[#67e8f9]"
           aria-label="时间轴缩放"
         />
-        <button
-          className={timelineZoomButtonClass}
+        <ClipButton
+          variant="timeline-zoom"
           onClick={() =>
             setPixelsPerSecond((prev) => clamp(prev - 2, minZoom, maxZoom))
           }
         >
           <DecreaseIcon className="h-4 w-4 fill-current" />
-        </button>
+        </ClipButton>
       </div>
     </div>
   );

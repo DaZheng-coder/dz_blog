@@ -8,15 +8,14 @@ import {
 } from "react";
 import { ClipMediaAssetCard } from "./ClipMediaAssetCard";
 import { ClipMediaEmptyState } from "./ClipMediaEmptyState";
+import { ClipMediaTextOverlayList } from "./ClipMediaTextOverlayList";
 import { ClipPanelFrame } from "../shared/ClipPanelFrame";
 import { useClipEditorStore } from "../store/clipEditorStore";
 import { createCardDragGhost, createTrackBlockGhost } from "./dragGhost";
 import { MEDIA_ASSET_MIME } from "../shared/dnd";
-import { subtleButtonClass } from "../shared/styles";
 import type { ClipDragAsset, ClipMediaAsset } from "../shared/types";
-import { formatTimelineRangeTime } from "../shared/time";
-import DeleteIcon from "../../../assets/delete.svg?react";
 import { useTextOverlayActions } from "../text/useTextOverlayActions";
+import { ClipButton } from "../shared/ClipButton";
 
 type ClipMediaPanelProps = {
   assets: ClipMediaAsset[];
@@ -244,36 +243,21 @@ export function ClipMediaPanel({
     setNewText("");
   }, [addTextOverlayAtCurrentTime, newText]);
 
-  const sortedTextOverlays = useMemo(
-    () =>
-      [...textOverlays].sort((a, b) => {
-        if (a.startSeconds !== b.startSeconds) {
-          return a.startSeconds - b.startSeconds;
-        }
-        return a.id.localeCompare(b.id);
-      }),
-    [textOverlays]
-  );
-  const selectedTextClipIdSet = useMemo(
-    () =>
-      selectedTimelineTrack === "text"
-        ? new Set(selectedTimelineClipIds)
-        : new Set<string>(),
-    [selectedTimelineClipIds, selectedTimelineTrack]
-  );
+  const selectedTextClipIds =
+    selectedTimelineTrack === "text" ? selectedTimelineClipIds : [];
 
   return (
     <ClipPanelFrame
       title="素材库"
       rightSlot={
         activeTab === "media" ? (
-          <button className={subtleButtonClass} onClick={onOpenImport}>
+          <ClipButton onClick={onOpenImport}>
             导入素材
-          </button>
+          </ClipButton>
         ) : (
-          <button className={subtleButtonClass} onClick={handleAddText}>
+          <ClipButton onClick={handleAddText}>
             添加文本
-          </button>
+          </ClipButton>
         )
       }
       bodyClassName="flex min-h-0 flex-col"
@@ -328,80 +312,21 @@ export function ClipMediaPanel({
             )}
           </>
         ) : (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <input
-                className="min-w-0 w-full flex-1 rounded border border-white/15 bg-white/5 px-2 py-1 text-xs text-white outline-none placeholder:text-[#6b7280] focus:border-[#22d3ee]/70"
-                placeholder="输入文本后添加到当前时间"
-                value={newText}
-                onChange={(event) => setNewText(event.target.value)}
-              />
-              <button
-                className="cursor-pointer rounded border border-[#22d3ee]/45 bg-[#22d3ee]/15 px-3 py-1 text-xs text-[#b9f6ff] hover:border-[#22d3ee]/80 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!newText.trim()}
-                onClick={handleAddText}
-              >
-                添加
-              </button>
-            </div>
-            <div className="text-[11px] text-[#6b7280]">
-              当前时间：{timelineCurrentTimeSeconds.toFixed(2)}s
-            </div>
-            {sortedTextOverlays.length === 0 ? (
-              <p className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#9ca3af]">
-                暂无文本，请先添加一条。
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {sortedTextOverlays.map((overlay) => {
-                  const isSelected = selectedTextClipIdSet.has(overlay.id);
-                  return (
-                    <div
-                      key={overlay.id}
-                      className={`cursor-pointer rounded border p-2 ${
-                        isSelected
-                          ? "border-[#67e8f9]/70 bg-[#22d3ee]/10 ring-1 ring-[#67e8f9]/60"
-                          : "border-white/10 bg-white/[0.03]"
-                      }`}
-                      onClick={(event) =>
-                        setSelectedTimelineClip(
-                          overlay.id,
-                          "text",
-                          event.metaKey || event.ctrlKey
-                        )
-                      }
-                    >
-                      <input
-                        className="min-w-0 w-full rounded border border-white/15 bg-white/5 px-2 py-1 text-xs text-white outline-none focus:border-[#22d3ee]/70"
-                        value={overlay.text}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={(event) =>
-                          updateTextOverlay(overlay.id, {
-                            text: event.target.value,
-                          })
-                        }
-                      />
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-[#9ca3af]">
-                        <span>
-                          {formatTimelineRangeTime(overlay.startSeconds)}～
-                          {formatTimelineRangeTime(overlay.endSeconds)}
-                        </span>
-                        <button
-                          className="cursor-pointer rounded border border-red-400/35 bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:border-red-300/70"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            removeTextOverlay(overlay.id);
-                          }}
-                        >
-                          <DeleteIcon className="h-4 w-4 fill-current" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <ClipMediaTextOverlayList
+            newText={newText}
+            currentTimeSeconds={timelineCurrentTimeSeconds}
+            textOverlays={textOverlays}
+            selectedTextClipIds={selectedTextClipIds}
+            onNewTextChange={setNewText}
+            onAddText={handleAddText}
+            onSelectTextOverlay={(overlayId, appendSelection) =>
+              setSelectedTimelineClip(overlayId, "text", appendSelection)
+            }
+            onUpdateTextOverlay={(overlayId, text) =>
+              updateTextOverlay(overlayId, { text })
+            }
+            onDeleteTextOverlay={removeTextOverlay}
+          />
         )}
       </div>
     </ClipPanelFrame>
