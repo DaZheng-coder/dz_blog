@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { ClipPanelFrame } from "../shared/ClipPanelFrame";
 import { useClipEditorStore } from "../store/clipEditorStore";
 import { useClipPreviewController } from "./useClipPreviewController";
+import { ClipPreviewStickerOverlayLayer } from "./ClipPreviewStickerOverlayLayer";
 import { ClipPreviewTextOverlayLayer } from "./ClipPreviewTextOverlayLayer";
 import { ClipPreviewControlBar } from "./ClipPreviewControlBar";
 
@@ -23,8 +24,18 @@ export function ClipPreviewPanel() {
   const setSelectedPreviewVideoInfo = useClipEditorStore(
     (state) => state.setSelectedPreviewVideoInfo
   );
+  const selectedInspectorSticker = useClipEditorStore(
+    (state) => state.selectedInspectorSticker
+  );
+  const setSelectedInspectorSticker = useClipEditorStore(
+    (state) => state.setSelectedInspectorSticker
+  );
   const textOverlays = useClipEditorStore((state) => state.textOverlays);
+  const stickerOverlays = useClipEditorStore((state) => state.stickerOverlays);
   const setTextOverlays = useClipEditorStore((state) => state.setTextOverlays);
+  const setStickerOverlays = useClipEditorStore(
+    (state) => state.setStickerOverlays
+  );
   const previewStageRef = useRef<HTMLDivElement>(null);
   const timelineSource =
     previewSource?.sourceType === "timeline" ? previewSource : null;
@@ -40,8 +51,15 @@ export function ClipPreviewPanel() {
       timelineCurrentTimeSeconds >= overlay.startSeconds &&
       timelineCurrentTimeSeconds < overlay.endSeconds
   );
+  const activeStickerOverlays = stickerOverlays.filter(
+    (overlay) =>
+      timelineCurrentTimeSeconds >= overlay.startSeconds &&
+      timelineCurrentTimeSeconds < overlay.endSeconds
+  );
   const showPreviewStage =
-    Boolean(previewSource) || activeTextOverlays.length > 0;
+    Boolean(previewSource) ||
+    activeTextOverlays.length > 0 ||
+    activeStickerOverlays.length > 0;
 
 
   return (
@@ -89,6 +107,7 @@ export function ClipPreviewPanel() {
                               return;
                             }
                             setSelectedInspectorAsset(null);
+                            setSelectedInspectorSticker(null);
                             setSelectedPreviewVideoInfo({
                               objectUrl: timelineSource.objectUrl,
                               durationSeconds: timelineSource.durationSeconds,
@@ -108,6 +127,19 @@ export function ClipPreviewPanel() {
                     textOverlays={textOverlays}
                     currentTimeSeconds={timelineCurrentTimeSeconds}
                     setTextOverlays={setTextOverlays}
+                  />
+                  <ClipPreviewStickerOverlayLayer
+                    stageRef={previewStageRef}
+                    stickerOverlays={stickerOverlays}
+                    currentTimeSeconds={timelineCurrentTimeSeconds}
+                    selectedStickerId={selectedInspectorSticker?.id ?? null}
+                    onSelectSticker={(sticker) => {
+                      setSelectedInspectorAsset(null);
+                      setSelectedPreviewVideoInfo(null);
+                      setSelectedInspectorSticker(sticker);
+                    }}
+                    onClearSelection={() => setSelectedInspectorSticker(null)}
+                    setStickerOverlays={setStickerOverlays}
                   />
                 </div>
               )}

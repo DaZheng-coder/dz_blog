@@ -6,6 +6,7 @@ import { useTextOverlayActions } from "../text/useTextOverlayActions";
 import { ClipInspectorTimelineEntitySection } from "./ClipInspectorTimelineEntitySection";
 import { ClipInspectorPreviewVideoSection } from "./ClipInspectorPreviewVideoSection";
 import { ClipInspectorAssetSection } from "./ClipInspectorAssetSection";
+import { ClipInspectorStickerSection } from "./ClipInspectorStickerSection";
 
 export function ClipInspectorPanel() {
   const setSelectedInspectorAsset = useClipEditorStore(
@@ -17,8 +18,14 @@ export function ClipInspectorPanel() {
   const setSelectedPreviewVideoInfo = useClipEditorStore(
     (state) => state.setSelectedPreviewVideoInfo
   );
+  const setSelectedInspectorSticker = useClipEditorStore(
+    (state) => state.setSelectedInspectorSticker
+  );
   const selectedInspectorAsset = useClipEditorStore(
     (state) => state.selectedInspectorAsset
+  );
+  const selectedInspectorSticker = useClipEditorStore(
+    (state) => state.selectedInspectorSticker
   );
   const selectedPreviewVideoInfo = useClipEditorStore(
     (state) => state.selectedPreviewVideoInfo
@@ -67,6 +74,23 @@ export function ClipInspectorPanel() {
     timelineClips,
   ]);
 
+  const content = selectedTimelineEntity ? (
+    <ClipInspectorTimelineEntitySection
+      entity={selectedTimelineEntity}
+      onUpdateTextOverlayStyle={updateSelectedTextOverlayStyle}
+    />
+  ) : selectedInspectorSticker ? (
+    <ClipInspectorStickerSection sticker={selectedInspectorSticker} />
+  ) : selectedPreviewVideoInfo ? (
+    <ClipInspectorPreviewVideoSection info={selectedPreviewVideoInfo} />
+  ) : selectedInspectorAsset ? (
+    <ClipInspectorAssetSection asset={selectedInspectorAsset} />
+  ) : (
+    <section className="grid h-full min-h-40 place-items-center rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-3 text-xs text-[#9ca3af]">
+      请选择素材库资源或时间线片段查看信息
+    </section>
+  );
+
   return (
     <div data-clip-inspector className="h-full">
       <ClipPanelFrame
@@ -76,6 +100,7 @@ export function ClipInspectorPanel() {
             className="cursor-pointer text-xs text-[#9ca3af] hover:text-white"
             onClick={() => {
               setSelectedInspectorAsset(null);
+              setSelectedInspectorSticker(null);
               setSelectedTimelineClip(null, null);
               setSelectedPreviewVideoInfo(null);
             }}
@@ -85,20 +110,7 @@ export function ClipInspectorPanel() {
         }
         bodyClassName="space-y-4 overflow-y-auto p-4 text-sm"
       >
-        {selectedTimelineEntity ? (
-          <ClipInspectorTimelineEntitySection
-            entity={selectedTimelineEntity}
-            onUpdateTextOverlayStyle={updateSelectedTextOverlayStyle}
-          />
-        ) : selectedPreviewVideoInfo ? (
-          <ClipInspectorPreviewVideoSection info={selectedPreviewVideoInfo} />
-        ) : !selectedInspectorAsset ? (
-          <section className="grid h-full min-h-40 place-items-center rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-3 text-xs text-[#9ca3af]">
-            请选择素材库资源或时间线片段查看信息
-          </section>
-        ) : (
-          <ClipInspectorAssetSection asset={selectedInspectorAsset} />
-        )}
+        {content}
       </ClipPanelFrame>
     </div>
   );

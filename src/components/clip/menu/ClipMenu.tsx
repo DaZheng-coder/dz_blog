@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useClipEditorStore } from "../store/clipEditorStore";
 import { ClipExportProgressModal } from "./ClipExportProgressModal";
 import { ClipMenuBrand } from "./ClipMenuBrand";
+import { ClipStickerOverlayModal } from "./ClipStickerOverlayModal";
 import { ClipTextOverlayModal } from "./ClipTextOverlayModal";
 import { menuItems, type ClipMenuItemId } from "./menuItems";
 import { exportTimelineToMp4 } from "./exportTimelineToMp4";
 import { useTextOverlayActions } from "../text/useTextOverlayActions";
 import { ClipButton } from "../shared/ClipButton";
+import { useStickerOverlayActions } from "../sticker/useStickerOverlayActions";
 
 type ClipMenuProps = {
   onOpenImport: () => void;
@@ -19,6 +21,7 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
   const [exportMessage, setExportMessage] = useState("等待导出");
   const [exportError, setExportError] = useState<string | null>(null);
   const [showTextModal, setShowTextModal] = useState(false);
+  const [showStickerModal, setShowStickerModal] = useState(false);
   const [exportedFile, setExportedFile] = useState<{
     blob: Blob;
     filename: string;
@@ -31,6 +34,12 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
     updateTextOverlay,
     removeTextOverlay,
   } = useTextOverlayActions();
+  const {
+    stickerOverlays,
+    addStickerOverlayAtCurrentTime,
+    updateStickerOverlay,
+    removeStickerOverlay,
+  } = useStickerOverlayActions();
 
   const handleDownloadExported = () => {
     if (!exportedFile) {
@@ -84,6 +93,10 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
     }
     if (menuItemId === "text") {
       setShowTextModal(true);
+      return;
+    }
+    if (menuItemId === "sticker") {
+      setShowStickerModal(true);
     }
   };
 
@@ -137,6 +150,15 @@ export function ClipMenu({ onOpenImport }: ClipMenuProps) {
         onAdd={handleAddText}
         onUpdate={updateTextOverlay}
         onDelete={removeTextOverlay}
+      />
+      <ClipStickerOverlayModal
+        isOpen={showStickerModal}
+        currentTimeSeconds={timelineCurrentTimeSeconds}
+        overlays={stickerOverlays}
+        onClose={() => setShowStickerModal(false)}
+        onAdd={addStickerOverlayAtCurrentTime}
+        onUpdate={updateStickerOverlay}
+        onDelete={removeStickerOverlay}
       />
     </>
   );

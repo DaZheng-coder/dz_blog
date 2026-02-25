@@ -8,6 +8,7 @@ import {
 } from "react";
 import { ClipMediaAssetCard } from "./ClipMediaAssetCard";
 import { ClipMediaEmptyState } from "./ClipMediaEmptyState";
+import { ClipMediaStickerOverlayList } from "./ClipMediaStickerOverlayList";
 import { ClipMediaTextOverlayList } from "./ClipMediaTextOverlayList";
 import { ClipPanelFrame } from "../shared/ClipPanelFrame";
 import { useClipEditorStore } from "../store/clipEditorStore";
@@ -16,6 +17,7 @@ import { MEDIA_ASSET_MIME } from "../shared/dnd";
 import type { ClipDragAsset, ClipMediaAsset } from "../shared/types";
 import { useTextOverlayActions } from "../text/useTextOverlayActions";
 import { ClipButton } from "../shared/ClipButton";
+import { useStickerOverlayActions } from "../sticker/useStickerOverlayActions";
 
 type ClipMediaPanelProps = {
   assets: ClipMediaAsset[];
@@ -36,6 +38,15 @@ export function ClipMediaPanel({
   const setSelectedInspectorAsset = useClipEditorStore(
     (state) => state.setSelectedInspectorAsset
   );
+  const selectedInspectorSticker = useClipEditorStore(
+    (state) => state.selectedInspectorSticker
+  );
+  const setSelectedInspectorSticker = useClipEditorStore(
+    (state) => state.setSelectedInspectorSticker
+  );
+  const setSelectedPreviewVideoInfo = useClipEditorStore(
+    (state) => state.setSelectedPreviewVideoInfo
+  );
   const {
     textOverlays,
     timelineCurrentTimeSeconds,
@@ -43,6 +54,12 @@ export function ClipMediaPanel({
     updateTextOverlay,
     removeTextOverlay,
   } = useTextOverlayActions();
+  const {
+    stickerOverlays,
+    addStickerOverlayAtCurrentTime,
+    updateStickerOverlay,
+    removeStickerOverlay,
+  } = useStickerOverlayActions();
   const selectedTimelineTrack = useClipEditorStore(
     (state) => state.selectedTimelineTrack
   );
@@ -60,7 +77,9 @@ export function ClipMediaPanel({
   const dragGhostFrameRef = useRef<number | null>(null);
   const dragGhostPendingPosRef = useRef<{ x: number; y: number } | null>(null);
   const transparentDragImageRef = useRef<HTMLCanvasElement | null>(null);
-  const [activeTab, setActiveTab] = useState<"media" | "text">("media");
+  const [activeTab, setActiveTab] = useState<"media" | "text" | "sticker">(
+    "media"
+  );
   const [newText, setNewText] = useState("");
 
   const hasAssets = assets.length > 0;
@@ -254,10 +273,12 @@ export function ClipMediaPanel({
           <ClipButton onClick={onOpenImport}>
             导入素材
           </ClipButton>
-        ) : (
+        ) : activeTab === "text" ? (
           <ClipButton onClick={handleAddText}>
             添加文本
           </ClipButton>
+        ) : (
+          <span className="text-xs text-[#6b7280]">选择贴纸添加到当前时间</span>
         )
       }
       bodyClassName="flex min-h-0 flex-col"
@@ -283,6 +304,16 @@ export function ClipMediaPanel({
         >
           文本
         </button>
+        <button
+          className={`cursor-pointer rounded-md px-3 py-1.5 ${
+            activeTab === "sticker"
+              ? "bg-[#22d3ee]/20 text-[#67e8f9]"
+              : "bg-white/5 text-[#9ca3af] hover:text-[#d1d5db]"
+          }`}
+          onClick={() => setActiveTab("sticker")}
+        >
+          贴纸
+        </button>
       </div>
 
       <div
@@ -300,7 +331,10 @@ export function ClipMediaPanel({
                   <ClipMediaAssetCard
                     key={asset.id}
                     asset={asset}
-                    onClick={setSelectedInspectorAsset}
+                    onClick={(selectedAsset) => {
+                      setSelectedInspectorSticker(null);
+                      setSelectedInspectorAsset(selectedAsset);
+                    }}
                     onDragStart={handleAssetDragStart}
                     onDragEnd={() => {
                       clearDragGhost();
@@ -311,7 +345,7 @@ export function ClipMediaPanel({
               </div>
             )}
           </>
-        ) : (
+        ) : activeTab === "text" ? (
           <ClipMediaTextOverlayList
             newText={newText}
             currentTimeSeconds={timelineCurrentTimeSeconds}
@@ -326,6 +360,20 @@ export function ClipMediaPanel({
               updateTextOverlay(overlayId, { text })
             }
             onDeleteTextOverlay={removeTextOverlay}
+          />
+        ) : (
+          <ClipMediaStickerOverlayList
+            stickerOverlays={stickerOverlays}
+            selectedStickerId={selectedInspectorSticker?.id ?? null}
+            onAddSticker={addStickerOverlayAtCurrentTime}
+            onSelectSticker={(sticker) => {
+              setSelectedTimelineClip(null, null);
+              setSelectedPreviewVideoInfo(null);
+              setSelectedInspectorAsset(null);
+              setSelectedInspectorSticker(sticker);
+            }}
+            onUpdateStickerOverlay={updateStickerOverlay}
+            onDeleteStickerOverlay={removeStickerOverlay}
           />
         )}
       </div>

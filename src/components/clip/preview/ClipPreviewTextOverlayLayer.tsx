@@ -1,7 +1,6 @@
 import {
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   useCallback,
@@ -10,6 +9,14 @@ import {
 } from "react";
 import type { ClipTextOverlay } from "../shared/types";
 import { useClipEditorStore } from "../store/clipEditorStore";
+import {
+  ClipPreviewSelectionFrame,
+  type PreviewResizeEdge,
+} from "./ClipPreviewSelectionFrame";
+import { usePreviewOverlayOutsideDismiss } from "./usePreviewOverlayOutsideDismiss";
+import { useActiveOverlays } from "./useActiveOverlays";
+import { usePreviewOverlayEdgeResize } from "./usePreviewOverlayEdgeResize";
+import { usePreviewOverlayPointerDrag } from "./usePreviewOverlayPointerDrag";
 
 const MIN_TEXT_FONT_SIZE = 12;
 const MAX_TEXT_FONT_SIZE = 240;
@@ -19,8 +26,7 @@ const EDIT_BOX_EXTRA_WIDTH = 12;
 const EDIT_BOX_EXTRA_HEIGHT = 8;
 const MIN_EDIT_BOX_WIDTH = 48;
 const MIN_EDIT_BOX_HEIGHT = 28;
-
-type TextResizeEdge = "top" | "right" | "bottom" | "left";
+const PREVIEW_TEXT_OVERLAY_DATASET_KEYS = ["previewTextOverlay"];
 
 type ClipPreviewTextOverlayLayerProps = {
   stageRef: RefObject<HTMLDivElement | null>;
@@ -63,15 +69,13 @@ export function ClipPreviewTextOverlayLayer({
     (state) => state.setSelectedTimelineClip
   );
 
-  const activeTextOverlays = useMemo(
-    () =>
-      textOverlays.filter(
-        (overlay) =>
-          currentTimeSeconds >= overlay.startSeconds &&
-          currentTimeSeconds < overlay.endSeconds
-      ),
-    [currentTimeSeconds, textOverlays]
-  );
+  const activeTextOverlays = useActiveOverlays(textOverlays, currentTimeSeconds);
+  const startPointerDrag = usePreviewOverlayPointerDrag({
+    stageRef,
+    dragThresholdPx: DRAG_START_THRESHOLD_PX,
+    preservePointerOffset: true,
+  });
+  const startEdgeResize = usePreviewOverlayEdgeResize();
 
   useEffect(() => {
     if (selectedTimelineTrack === "text" && selectedTimelineClipId) {
@@ -123,40 +127,19 @@ export function ClipPreviewTextOverlayLayer({
     [setTextOverlays]
   );
 
-  useEffect(() => {
-    const handleDocumentPointerDown = (event: PointerEvent) => {
-      const path = event.composedPath();
-      const clickedInsideOverlay = path.some((node) => {
-        if (!(node instanceof HTMLElement)) {
-          return false;
-        }
-        return node.dataset.previewTextOverlay !== undefined;
-      });
-      const clickedInsideInspector = path.some((node) => {
-        if (!(node instanceof HTMLElement)) {
-          return false;
-        }
-        return node.dataset.clipInspector !== undefined;
-      });
-      if (clickedInsideOverlay || clickedInsideInspector) {
-        return;
-      }
-      if (editingOverlayId) {
-        commitOverlayText(editingOverlayId, editingTextRef.current);
-      }
-      setSelectedOverlayId(null);
-      setSelectedTimelineClip(null, null);
-    };
-
-    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
-    return () => {
-      document.removeEventListener(
-        "pointerdown",
-        handleDocumentPointerDown,
-        true
-      );
-    };
+  const dismissTextSelection = useCallback(() => {
+    if (editingOverlayId) {
+      commitOverlayText(editingOverlayId, editingTextRef.current);
+    }
+    setSelectedOverlayId(null);
+    setSelectedTimelineClip(null, null);
   }, [commitOverlayText, editingOverlayId, setSelectedTimelineClip]);
+
+  usePreviewOverlayOutsideDismiss({
+    enabled: Boolean(selectedOverlayId || editingOverlayId),
+    overlayDatasetKeys: PREVIEW_TEXT_OVERLAY_DATASET_KEYS,
+    onDismiss: dismissTextSelection,
+  });
 
   const handleOverlayTextKeyDown = (
     event: ReactKeyboardEvent<HTMLTextAreaElement>,
@@ -198,102 +181,17 @@ export function ClipPreviewTextOverlayLayer({
     });
   }, [editingOverlayId, editingText]);
 
-  const handleOverlayDragStart = (
-    event: React.MouseEvent<HTMLDivElement>,
-    overlayId: string
-  ) => {
-    if (
-      event.button !== 0 ||
-      editingOverlayId === overlayId ||
-      event.detail > 1
-    ) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-
-    const stage = stageRef.current;
-    if (!stage) {
-      return;
-    }
-
-    const overlayRect = event.currentTarget.getBoundingClientRect();
-    const overlayCenterX = overlayRect.left + overlayRect.width / 2;
-    const overlayCenterY = overlayRect.top + overlayRect.height / 2;
-    const dragOffsetX = event.clientX - overlayCenterX;
-    const dragOffsetY = event.clientY - overlayCenterY;
-    const startClientX = event.clientX;
-    const startClientY = event.clientY;
-    let didStartDrag = false;
-
-    const rect = stage.getBoundingClientRect();
-    const updatePosition = (clientX: number, clientY: number) => {
-      const centerX = clientX - dragOffsetX;
-      const centerY = clientY - dragOffsetY;
-      const xPercent = Math.max(
-        0,
-        Math.min(100, ((centerX - rect.left) / rect.width) * 100)
-      );
-      const yPercent = Math.max(
-        0,
-        Math.min(100, ((centerY - rect.top) / rect.height) * 100)
-      );
-      setTextOverlays((prev) =>
-        prev.map((overlay) =>
-          overlay.id === overlayId ? { ...overlay, xPercent, yPercent } : overlay
-        )
-      );
-    };
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!didStartDrag) {
-        const deltaX = Math.abs(moveEvent.clientX - startClientX);
-        const deltaY = Math.abs(moveEvent.clientY - startClientY);
-        if (deltaX < DRAG_START_THRESHOLD_PX && deltaY < DRAG_START_THRESHOLD_PX) {
-          return;
-        }
-        didStartDrag = true;
-      }
-      updatePosition(moveEvent.clientX, moveEvent.clientY);
-    };
-
-    const handleMouseUp = () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-  };
-
   const handleOverlayResizeStart = (
     event: React.MouseEvent<HTMLDivElement>,
     overlayId: string,
-    edge: TextResizeEdge
+    edge: PreviewResizeEdge
   ) => {
-    event.preventDefault();
-    event.stopPropagation();
     const target = textOverlays.find((overlay) => overlay.id === overlayId);
     if (!target) {
       return;
     }
-    const startX = event.clientX;
-    const startY = event.clientY;
     const startFontSize = Math.max(MIN_TEXT_FONT_SIZE, target.fontSize || 0);
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
-      let delta = 0;
-      if (edge === "top") {
-        delta = -deltaY;
-      } else if (edge === "bottom") {
-        delta = deltaY;
-      } else if (edge === "left") {
-        delta = -deltaX;
-      } else {
-        delta = deltaX;
-      }
+    startEdgeResize(event, edge, (delta) => {
       const nextFontSize = Math.max(
         MIN_TEXT_FONT_SIZE,
         Math.min(MAX_TEXT_FONT_SIZE, startFontSize + delta * TEXT_RESIZE_SENSITIVITY)
@@ -303,15 +201,7 @@ export function ClipPreviewTextOverlayLayer({
           overlay.id === overlayId ? { ...overlay, fontSize: nextFontSize } : overlay
         )
       );
-    };
-
-    const handleMouseUp = () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    });
   };
 
   return (
@@ -363,35 +253,34 @@ export function ClipPreviewTextOverlayLayer({
               ),
             });
           }}
-          onMouseDown={(event) => handleOverlayDragStart(event, overlay.id)}
+          onMouseDown={(event) => {
+            if (
+              event.button !== 0 ||
+              editingOverlayId === overlay.id ||
+              event.detail > 1
+            ) {
+              return;
+            }
+            startPointerDrag(event, (xPercent, yPercent) => {
+              setTextOverlays((prev) =>
+                prev.map((item) =>
+                  item.id === overlay.id ? { ...item, xPercent, yPercent } : item
+                )
+              );
+            });
+          }}
         >
           {selectedOverlayId === overlay.id && editingOverlayId !== overlay.id ? (
-            <>
-              <div
-                className="absolute left-0 top-0 h-[2px] w-full cursor-ns-resize bg-[#67e8f9]/90"
-                onMouseDown={(event) =>
-                  handleOverlayResizeStart(event, overlay.id, "top")
-                }
-              />
-              <div
-                className="absolute bottom-0 left-0 h-[2px] w-full cursor-ns-resize bg-[#67e8f9]/90"
-                onMouseDown={(event) =>
-                  handleOverlayResizeStart(event, overlay.id, "bottom")
-                }
-              />
-              <div
-                className="absolute left-0 top-0 h-full w-[2px] cursor-ew-resize bg-[#67e8f9]/90"
-                onMouseDown={(event) =>
-                  handleOverlayResizeStart(event, overlay.id, "left")
-                }
-              />
-              <div
-                className="absolute right-0 top-0 h-full w-[2px] cursor-ew-resize bg-[#67e8f9]/90"
-                onMouseDown={(event) =>
-                  handleOverlayResizeStart(event, overlay.id, "right")
-                }
-              />
-            </>
+            <ClipPreviewSelectionFrame
+              frameClassName="pointer-events-none absolute inset-0 border border-[#67e8f9]/90"
+              topHandleClassName="absolute left-0 top-0 h-[2px] w-full cursor-ns-resize bg-[#67e8f9]/90"
+              rightHandleClassName="absolute right-0 top-0 h-full w-[2px] cursor-ew-resize bg-[#67e8f9]/90"
+              bottomHandleClassName="absolute bottom-0 left-0 h-[2px] w-full cursor-ns-resize bg-[#67e8f9]/90"
+              leftHandleClassName="absolute left-0 top-0 h-full w-[2px] cursor-ew-resize bg-[#67e8f9]/90"
+              onResizeStart={(event, edge) =>
+                handleOverlayResizeStart(event, overlay.id, edge)
+              }
+            />
           ) : null}
 
           {editingOverlayId === overlay.id ? (

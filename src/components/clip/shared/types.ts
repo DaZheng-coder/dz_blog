@@ -49,6 +49,16 @@ export type ClipTextOverlay = {
   color: string;
 };
 
+export type ClipStickerOverlay = {
+  id: string;
+  sticker: string;
+  startSeconds: number;
+  endSeconds: number;
+  xPercent: number;
+  yPercent: number;
+  size: number;
+};
+
 export type ClipPreviewVideoSource = {
   sourceType: "timeline";
   durationSeconds: number;
