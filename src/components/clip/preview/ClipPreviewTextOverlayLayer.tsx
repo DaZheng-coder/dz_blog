@@ -74,7 +74,13 @@ export function ClipPreviewTextOverlayLayer({
         }
         return node.dataset.previewTextOverlay !== undefined;
       });
-      if (clickedInsideOverlay) {
+      const clickedInsideInspector = path.some((node) => {
+        if (!(node instanceof HTMLElement)) {
+          return false;
+        }
+        return node.dataset.clipInspector !== undefined;
+      });
+      if (clickedInsideOverlay || clickedInsideInspector) {
         return;
       }
       setSelectedOverlayId(null);
@@ -89,7 +95,7 @@ export function ClipPreviewTextOverlayLayer({
         true
       );
     };
-  }, [setSelectedTimelineClip, stageRef]);
+  }, [setSelectedTimelineClip]);
 
   const handleOverlayDragStart = (
     event: React.MouseEvent<HTMLDivElement>,

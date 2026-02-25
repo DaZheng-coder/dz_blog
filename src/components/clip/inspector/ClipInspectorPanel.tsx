@@ -68,36 +68,38 @@ export function ClipInspectorPanel() {
   ]);
 
   return (
-    <ClipPanelFrame
-      title="检查器"
-      rightSlot={
-        <button
-          className="cursor-pointer text-xs text-[#9ca3af] hover:text-white"
-          onClick={() => {
-            setSelectedInspectorAsset(null);
-            setSelectedTimelineClip(null, null);
-            setSelectedPreviewVideoInfo(null);
-          }}
-        >
-          重置
-        </button>
-      }
-      bodyClassName="space-y-4 overflow-y-auto p-4 text-sm"
-    >
-      {selectedTimelineEntity ? (
-        <ClipInspectorTimelineEntitySection
-          entity={selectedTimelineEntity}
-          onUpdateTextOverlayStyle={updateSelectedTextOverlayStyle}
-        />
-      ) : selectedPreviewVideoInfo ? (
-        <ClipInspectorPreviewVideoSection info={selectedPreviewVideoInfo} />
-      ) : !selectedInspectorAsset ? (
-        <section className="grid h-full min-h-40 place-items-center rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-3 text-xs text-[#9ca3af]">
-          请选择素材库资源或时间线片段查看信息
-        </section>
-      ) : (
-        <ClipInspectorAssetSection asset={selectedInspectorAsset} />
-      )}
-    </ClipPanelFrame>
+    <div data-clip-inspector className="h-full">
+      <ClipPanelFrame
+        title="检查器"
+        rightSlot={
+          <button
+            className="cursor-pointer text-xs text-[#9ca3af] hover:text-white"
+            onClick={() => {
+              setSelectedInspectorAsset(null);
+              setSelectedTimelineClip(null, null);
+              setSelectedPreviewVideoInfo(null);
+            }}
+          >
+            重置
+          </button>
+        }
+        bodyClassName="space-y-4 overflow-y-auto p-4 text-sm"
+      >
+        {selectedTimelineEntity ? (
+          <ClipInspectorTimelineEntitySection
+            entity={selectedTimelineEntity}
+            onUpdateTextOverlayStyle={updateSelectedTextOverlayStyle}
+          />
+        ) : selectedPreviewVideoInfo ? (
+          <ClipInspectorPreviewVideoSection info={selectedPreviewVideoInfo} />
+        ) : !selectedInspectorAsset ? (
+          <section className="grid h-full min-h-40 place-items-center rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-3 text-xs text-[#9ca3af]">
+            请选择素材库资源或时间线片段查看信息
+          </section>
+        ) : (
+          <ClipInspectorAssetSection asset={selectedInspectorAsset} />
+        )}
+      </ClipPanelFrame>
+    </div>
   );
 }

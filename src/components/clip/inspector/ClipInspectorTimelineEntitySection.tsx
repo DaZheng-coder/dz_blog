@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { formatDuration } from "../shared/time";
 import type { ClipTextOverlay, ClipTrackClip } from "../shared/types";
 
@@ -18,20 +19,35 @@ function InspectorNumberInputRow({
   step,
   onChange,
 }: InspectorNumberInputRowProps) {
+  const [draftValue, setDraftValue] = useState(String(value));
+
+  useEffect(() => {
+    setDraftValue(String(value));
+  }, [value]);
+
+  const commitValue = () => {
+    const parsed = Number(draftValue);
+    const nextValue = Number.isFinite(parsed)
+      ? Math.max(min, Math.min(max, parsed))
+      : value;
+    setDraftValue(String(nextValue));
+    onChange(nextValue);
+  };
+
   return (
     <label className="flex items-center justify-between gap-2 text-[11px]">
       <span className="text-[#cbd5e1]">{label}</span>
       <input
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) =>
-          onChange(
-            Math.max(min, Math.min(max, Number(event.target.value) || min))
-          )
-        }
+        type="text"
+        inputMode={step < 1 ? "decimal" : "numeric"}
+        value={draftValue}
+        onChange={(event) => setDraftValue(event.target.value)}
+        onBlur={commitValue}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.currentTarget.blur();
+          }
+        }}
         className="w-20 rounded border border-white/15 bg-white/5 px-2 pr-2 py-1 text-right text-xs text-white outline-none focus:border-[#22d3ee]/70"
       />
     </label>
