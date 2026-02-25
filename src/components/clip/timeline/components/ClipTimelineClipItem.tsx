@@ -19,7 +19,7 @@ type ClipTimelineClipItemProps = {
   index: number;
   compact?: boolean;
   pixelsPerSecond: number;
-  selectedClipIds?: string[];
+  isSelected?: boolean;
   timelineToolMode: "select" | "cut";
   draggingClipId: string | null;
   resizingClipId: string | null;
@@ -48,7 +48,7 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
   index,
   compact = false,
   pixelsPerSecond,
-  selectedClipIds,
+  isSelected = false,
   timelineToolMode,
   draggingClipId,
   resizingClipId,
@@ -139,7 +139,7 @@ export const ClipTimelineClipItem = memo(function ClipTimelineClipItem({
       onDragEnd={onClipDragEnd}
       className={`absolute left-0 rounded-md border bg-gradient-to-r text-xs text-white will-change-transform ${blockClass} ${
         TRACK_COLORS[index % TRACK_COLORS.length]
-      } ${selectedClipIds?.includes(clip.id) ? "ring-2 ring-[#67e8f9]" : ""} ${
+      } ${isSelected ? "ring-2 ring-[#67e8f9]" : ""} ${
         draggingClipId === clip.id ? "opacity-60" : "opacity-100"
       }`}
       style={{

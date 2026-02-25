@@ -10,12 +10,7 @@ import { MIN_CLIP_WIDTH } from "../utils/clipTimelineConfig";
 import { ClipTimelineClipItem } from "./ClipTimelineClipItem";
 import { ClipTimelineDragPreviewItem } from "./ClipTimelineDragPreviewItem";
 import type { ClipTrackClip } from "../../shared/types";
-
-type TimelineDragPreview = {
-  title: string;
-  startSeconds: number;
-  durationSeconds: number;
-};
+import type { TimelineDragPreview } from "../utils/timelineTypes";
 
 type ClipTimelineLaneProps = {
   laneRef: RefObject<HTMLDivElement | null>;
@@ -124,6 +119,10 @@ export const ClipTimelineLane = memo(function ClipTimelineLane({
     });
     return map;
   }, [clips]);
+  const selectedClipIdSet = useMemo(
+    () => new Set(selectedClipIds),
+    [selectedClipIds]
+  );
 
   return (
     <div
@@ -160,7 +159,7 @@ export const ClipTimelineLane = memo(function ClipTimelineLane({
             index={index}
             compact={compact}
             pixelsPerSecond={pixelsPerSecond}
-            selectedClipIds={selectedClipIds}
+            isSelected={selectedClipIdSet.has(clip.id)}
             timelineToolMode={timelineToolMode}
             draggingClipId={draggingClipId}
             resizingClipId={resizingClipId}

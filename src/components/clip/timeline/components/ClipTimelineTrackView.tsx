@@ -12,20 +12,13 @@ import { ClipTimelineRuler } from "./ClipTimelineRuler";
 import { ClipTimelineTrackLabels } from "./ClipTimelineTrackLabels";
 import { ClipTimelineTextClipItem } from "./ClipTimelineTextClipItem";
 import { ClipTimelineToolbar } from "./ClipTimelineToolbar";
-import { TRACK_COLORS } from "../utils/clipTimelineConfig";
 import { useTimelineAudioPlayback } from "../hooks/useTimelineAudioPlayback";
 import { useTimelineClipEditing } from "../hooks/useTimelineClipEditing";
 import { useTimelineDragAndDrop } from "../hooks/useTimelineDragAndDrop";
 import { useTimelineHotkeys } from "../hooks/useTimelineHotkeys";
 import { useTimelinePlayback } from "../hooks/useTimelinePlayback";
 import { useTimelineSelectionActions } from "../hooks/useTimelineSelectionActions";
-import { useTextTrackEditing } from "../hooks/useTextTrackEditing";
-
-export type TimelineDragPreview = {
-  title: string;
-  startSeconds: number;
-  durationSeconds: number;
-};
+import { useTimelineTextTrackController } from "../hooks/useTimelineTextTrackController";
 
 const TIMELINE_LEFT_INSET_PX = 20;
 const TEXT_TRACK_MIN_BLOCK_WIDTH_PX = 14;
@@ -173,30 +166,6 @@ export function ClipTimelineTrackView() {
     clearSelection: () => setSelectedTimelineClip(null, null),
   });
 
-  const deleteSelectedTextClips = useCallback(() => {
-    if (selectedTimelineTrack !== "text" || selectedTimelineClipIds.length === 0) {
-      return;
-    }
-    const selectedIdSet = new Set(selectedTimelineClipIds);
-    setTextOverlays((prev) =>
-      prev.filter((overlay) => !selectedIdSet.has(overlay.id))
-    );
-    setSelectedTimelineClip(null, null);
-  }, [
-    selectedTimelineClipIds,
-    selectedTimelineTrack,
-    setSelectedTimelineClip,
-    setTextOverlays,
-  ]);
-
-  useTimelineHotkeys({
-    selectedTimelineTrack,
-    selectedTimelineClipCount: selectedTimelineClipIds.length,
-    onDeleteVideo: videoClipEditing.deleteSelectedClip,
-    onDeleteAudio: audioClipEditing.deleteSelectedClip,
-    onDeleteText: deleteSelectedTextClips,
-  });
-
   const {
     scrollRef,
     laneRef,
@@ -229,39 +198,34 @@ export function ClipTimelineTrackView() {
   const renderedAudioClips =
     audioDragAndDrop.ripplePreviewClips ?? audioTimelineClips;
   const {
-    textTrackClips,
-    setTextTrackClips,
+    textDragAndDrop,
+    renderedTextTrackClips,
+    textDragPreviewToneClassName,
+    selectedTextClipIdSet,
+    deleteSelectedTextClips,
     handleTextTrackEditStart,
     handleSplitTextOverlayAtTime,
-  } = useTextTrackEditing({
+  } = useTimelineTextTrackController({
     textOverlays,
     setTextOverlays,
+    selectedTimelineClipIds,
+    selectedTimelineTrack,
+    setSelectedTimelineClip,
+    draggingAsset,
     pixelsPerSecond,
     maxTimelineSeconds,
     minTextDurationSeconds,
     timelineToolMode,
+    textLaneRef,
   });
-  const textDragAndDrop = useTimelineDragAndDrop({
-    clips: textTrackClips,
-    setClips: setTextTrackClips,
-    draggingAsset,
-    pixelsPerSecond: playback.pixelsPerSecond,
-    laneRef: textLaneRef,
-    allowAssetInsert: false,
+
+  useTimelineHotkeys({
+    selectedTimelineTrack,
+    selectedTimelineClipCount: selectedTimelineClipIds.length,
+    onDeleteVideo: videoClipEditing.deleteSelectedClip,
+    onDeleteAudio: audioClipEditing.deleteSelectedClip,
+    onDeleteText: deleteSelectedTextClips,
   });
-  const renderedTextTrackClips =
-    textDragAndDrop.ripplePreviewClips ?? textTrackClips;
-  const textDragPreviewToneClassName = useMemo(() => {
-    if (!textDragAndDrop.draggingClipId) {
-      return "border-[#a78bfa] bg-gradient-to-r from-[#a78bfa]/35 to-[#6366f1]/35";
-    }
-    const index = textTrackClips.findIndex(
-      (clip) => clip.id === textDragAndDrop.draggingClipId
-    );
-    const colorClass =
-      TRACK_COLORS[(index < 0 ? 0 : index) % TRACK_COLORS.length];
-    return `bg-gradient-to-r ${colorClass}`;
-  }, [textDragAndDrop.draggingClipId, textTrackClips]);
   const isAnyDragActive =
     Boolean(draggingAsset) ||
     Boolean(videoDragAndDrop.draggingClipId) ||
@@ -440,7 +404,7 @@ export function ClipTimelineTrackView() {
                             appendSelection
                           )
                         }
-                        isSelected={selectedTimelineClipIds.includes(clip.id)}
+                        isSelected={selectedTextClipIdSet.has(clip.id)}
                       />
                     );
                   }}
