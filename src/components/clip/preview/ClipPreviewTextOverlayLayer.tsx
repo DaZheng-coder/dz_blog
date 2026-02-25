@@ -108,15 +108,23 @@ export function ClipPreviewTextOverlayLayer({
       return;
     }
 
+    const overlayRect = event.currentTarget.getBoundingClientRect();
+    const overlayCenterX = overlayRect.left + overlayRect.width / 2;
+    const overlayCenterY = overlayRect.top + overlayRect.height / 2;
+    const dragOffsetX = event.clientX - overlayCenterX;
+    const dragOffsetY = event.clientY - overlayCenterY;
+
     const rect = stage.getBoundingClientRect();
     const updatePosition = (clientX: number, clientY: number) => {
+      const centerX = clientX - dragOffsetX;
+      const centerY = clientY - dragOffsetY;
       const xPercent = Math.max(
         0,
-        Math.min(100, ((clientX - rect.left) / rect.width) * 100)
+        Math.min(100, ((centerX - rect.left) / rect.width) * 100)
       );
       const yPercent = Math.max(
         0,
-        Math.min(100, ((clientY - rect.top) / rect.height) * 100)
+        Math.min(100, ((centerY - rect.top) / rect.height) * 100)
       );
       setTextOverlays((prev) =>
         prev.map((overlay) =>
