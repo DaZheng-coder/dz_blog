@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useClipEditorStore } from "../../store/clipEditorStore";
+import type { ClipTrackClip } from "../../shared/types";
 import { ClipTimelineLane } from "./ClipTimelineLane";
 import { ClipTimelinePlayhead } from "./ClipTimelinePlayhead";
 import { ClipTimelineRuler } from "./ClipTimelineRuler";
@@ -51,6 +52,8 @@ export function ClipTimelineTrackView() {
     setTextOverlays,
     setStickerOverlays,
     setSelectedTimelineClip,
+    setSelectedInspectorAsset,
+    setSelectedPreviewVideoInfo,
     setSelectedInspectorSticker,
     previewTimelineClip,
     previewEmptyFrame,
@@ -76,6 +79,8 @@ export function ClipTimelineTrackView() {
       setTextOverlays: state.setTextOverlays,
       setStickerOverlays: state.setStickerOverlays,
       setSelectedTimelineClip: state.setSelectedTimelineClip,
+      setSelectedInspectorAsset: state.setSelectedInspectorAsset,
+      setSelectedPreviewVideoInfo: state.setSelectedPreviewVideoInfo,
       setSelectedInspectorSticker: state.setSelectedInspectorSticker,
       previewTimelineClip: state.previewTimelineClip,
       previewEmptyFrame: state.previewEmptyFrame,
@@ -307,6 +312,24 @@ export function ClipTimelineTrackView() {
   const noopClipClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
   }, []);
+  const handleVideoClipClickWithInspector = useCallback(
+    (
+      event: ReactMouseEvent<HTMLElement>,
+      clip: ClipTrackClip,
+      appendSelection: boolean
+    ) => {
+      setSelectedInspectorAsset(null);
+      setSelectedInspectorSticker(null);
+      setSelectedPreviewVideoInfo(null);
+      handleVideoClipClick(event, clip, appendSelection);
+    },
+    [
+      handleVideoClipClick,
+      setSelectedInspectorAsset,
+      setSelectedInspectorSticker,
+      setSelectedPreviewVideoInfo,
+    ]
+  );
 
   const laneSharedProps = useMemo(
     () => ({
@@ -553,7 +576,7 @@ export function ClipTimelineTrackView() {
                   onTrackDragOver={videoDragAndDrop.handleTrackDragOver}
                   onTrackDragLeave={videoDragAndDrop.handleTrackDragLeave}
                   onTrackDrop={videoDragAndDrop.handleTrackDrop}
-                  onClipClick={handleVideoClipClick}
+                  onClipClick={handleVideoClipClickWithInspector}
                   onClipDragStart={videoDragAndDrop.handleClipDragStart}
                   onClipDragEnd={videoDragAndDrop.handleClipDragEnd}
                   onClipLeftResizeStart={

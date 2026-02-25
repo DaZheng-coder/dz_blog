@@ -24,6 +24,12 @@ export function ClipPreviewPanel() {
   const setSelectedPreviewVideoInfo = useClipEditorStore(
     (state) => state.setSelectedPreviewVideoInfo
   );
+  const selectedTimelineTrack = useClipEditorStore(
+    (state) => state.selectedTimelineTrack
+  );
+  const selectedTimelineClipId = useClipEditorStore(
+    (state) => state.selectedTimelineClipId
+  );
   const selectedInspectorSticker = useClipEditorStore(
     (state) => state.selectedInspectorSticker
   );
@@ -63,6 +69,8 @@ export function ClipPreviewPanel() {
     Boolean(previewSource) ||
     activeTextOverlays.length > 0 ||
     activeStickerOverlays.length > 0;
+  const isVideoTimelineClipSelected =
+    selectedTimelineTrack === "video" && Boolean(selectedTimelineClipId);
 
   useEffect(() => {
     const stage = previewStageRef.current;
@@ -77,7 +85,6 @@ export function ClipPreviewPanel() {
     observer.observe(stage);
     return () => observer.disconnect();
   }, [setPreviewStageSize, showPreviewStage]);
-
 
   return (
     <ClipPanelFrame
@@ -95,71 +102,86 @@ export function ClipPreviewPanel() {
     >
       <div className="min-h-0 h-full flex-1">
         <div className="flex h-full w-full items-center justify-center">
-          <div className="flex h-full w-full max-w-3xl flex-col">
-            <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_30px_80px_-30px_rgba(34,211,238,0.35)]">
-              {!showPreviewStage && (
-                <div className="relative h-full w-full overflow-hidden bg-[#090d14]">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,#22d3ee30_0%,transparent_35%),radial-gradient(circle_at_75%_75%,#3b82f640_0%,transparent_42%)]" />
-                  <div className="absolute inset-0 grid place-items-center text-sm text-[#9ca3af]">
-                    请导入视频开始编辑
-                  </div>
-                </div>
-              )}
-              {showPreviewStage && (
-                <div ref={previewStageRef} className="relative h-full w-full">
-                  {isEmptySource ? (
-                    <div className="h-full w-full bg-black" />
+          <div className="flex h-full w-full max-w-4xl flex-col">
+            <div className="min-h-0 flex flex-1 items-center justify-center">
+              <div className="relative aspect-video h-full w-auto max-h-full max-w-full border border-white/10 bg-black shadow-[0_30px_80px_-30px_rgba(34,211,238,0.35)]">
+                <div
+                  ref={previewStageRef}
+                  className="relative h-full w-full overflow-hidden"
+                >
+                  {!showPreviewStage ? (
+                    <div className="relative h-full w-full overflow-hidden bg-[#090d14]">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,#22d3ee30_0%,transparent_35%),radial-gradient(circle_at_75%_75%,#3b82f640_0%,transparent_42%)]" />
+                      <div className="absolute inset-0 grid place-items-center text-sm text-[#9ca3af]">
+                        请导入视频开始编辑
+                      </div>
+                    </div>
                   ) : (
                     <>
-                      {previewSource ? (
-                        <video
-                          key={`${timelineSource?.sourceType}-${timelineSource?.objectUrl}`}
-                          ref={videoRef}
-                          src={timelineSource?.objectUrl}
-                          className="h-full w-full object-contain"
-                          playsInline
-                          muted
-                          onClick={() => {
-                            if (!timelineSource) {
-                              return;
-                            }
-                            setSelectedInspectorAsset(null);
-                            setSelectedInspectorSticker(null);
-                            setSelectedPreviewVideoInfo({
-                              objectUrl: timelineSource.objectUrl,
-                              durationSeconds: timelineSource.durationSeconds,
-                              sourceStartSeconds:
-                                timelineSource.sourceStartSeconds,
-                              sourceEndSeconds: timelineSource.sourceEndSeconds,
-                            });
-                          }}
-                        />
-                      ) : (
+                      {isEmptySource ? (
                         <div className="h-full w-full bg-black" />
+                      ) : (
+                        <>
+                          {previewSource ? (
+                            <div className="relative h-full w-full">
+                              <video
+                                key={`${timelineSource?.sourceType}-${timelineSource?.objectUrl}`}
+                                ref={videoRef}
+                                src={timelineSource?.objectUrl}
+                                className="h-full w-full object-contain"
+                                playsInline
+                                muted
+                                onClick={() => {
+                                  if (!timelineSource) {
+                                    return;
+                                  }
+                                  setSelectedInspectorAsset(null);
+                                  setSelectedInspectorSticker(null);
+                                  setSelectedPreviewVideoInfo({
+                                    objectUrl: timelineSource.objectUrl,
+                                    durationSeconds:
+                                      timelineSource.durationSeconds,
+                                    sourceStartSeconds:
+                                      timelineSource.sourceStartSeconds,
+                                    sourceEndSeconds:
+                                      timelineSource.sourceEndSeconds,
+                                  });
+                                }}
+                              />
+                              {isVideoTimelineClipSelected ? (
+                                <div className="pointer-events-none absolute inset-0 border-2 border-[#67e8f9]/90" />
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="h-full w-full bg-black" />
+                          )}
+                        </>
                       )}
+                      <ClipPreviewTextOverlayLayer
+                        stageRef={previewStageRef}
+                        textOverlays={textOverlays}
+                        currentTimeSeconds={timelineCurrentTimeSeconds}
+                        setTextOverlays={setTextOverlays}
+                      />
+                      <ClipPreviewStickerOverlayLayer
+                        stageRef={previewStageRef}
+                        stickerOverlays={stickerOverlays}
+                        currentTimeSeconds={timelineCurrentTimeSeconds}
+                        selectedStickerId={selectedInspectorSticker?.id ?? null}
+                        onSelectSticker={(sticker) => {
+                          setSelectedInspectorAsset(null);
+                          setSelectedPreviewVideoInfo(null);
+                          setSelectedInspectorSticker(sticker);
+                        }}
+                        onClearSelection={() =>
+                          setSelectedInspectorSticker(null)
+                        }
+                        setStickerOverlays={setStickerOverlays}
+                      />
                     </>
                   )}
-                  <ClipPreviewTextOverlayLayer
-                    stageRef={previewStageRef}
-                    textOverlays={textOverlays}
-                    currentTimeSeconds={timelineCurrentTimeSeconds}
-                    setTextOverlays={setTextOverlays}
-                  />
-                  <ClipPreviewStickerOverlayLayer
-                    stageRef={previewStageRef}
-                    stickerOverlays={stickerOverlays}
-                    currentTimeSeconds={timelineCurrentTimeSeconds}
-                    selectedStickerId={selectedInspectorSticker?.id ?? null}
-                    onSelectSticker={(sticker) => {
-                      setSelectedInspectorAsset(null);
-                      setSelectedPreviewVideoInfo(null);
-                      setSelectedInspectorSticker(sticker);
-                    }}
-                    onClearSelection={() => setSelectedInspectorSticker(null)}
-                    setStickerOverlays={setStickerOverlays}
-                  />
                 </div>
-              )}
+              </div>
             </div>
             <ClipPreviewControlBar
               currentTimeSeconds={timelineCurrentTimeSeconds}
