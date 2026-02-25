@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type RefObject } from "react";
 import type { ClipTextOverlay } from "../shared/types";
+import { useClipEditorStore } from "../store/clipEditorStore";
 
 const MIN_TEXT_FONT_SIZE = 12;
 const MAX_TEXT_FONT_SIZE = 240;
@@ -24,6 +25,15 @@ export function ClipPreviewTextOverlayLayer({
   setTextOverlays,
 }: ClipPreviewTextOverlayLayerProps) {
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
+  const selectedTimelineClipId = useClipEditorStore(
+    (state) => state.selectedTimelineClipId
+  );
+  const selectedTimelineTrack = useClipEditorStore(
+    (state) => state.selectedTimelineTrack
+  );
+  const setSelectedTimelineClip = useClipEditorStore(
+    (state) => state.setSelectedTimelineClip
+  );
 
   const activeTextOverlays = useMemo(
     () =>
@@ -34,6 +44,14 @@ export function ClipPreviewTextOverlayLayer({
       ),
     [currentTimeSeconds, textOverlays]
   );
+
+  useEffect(() => {
+    if (selectedTimelineTrack === "text" && selectedTimelineClipId) {
+      setSelectedOverlayId(selectedTimelineClipId);
+      return;
+    }
+    setSelectedOverlayId(null);
+  }, [selectedTimelineClipId, selectedTimelineTrack]);
 
   useEffect(() => {
     if (!selectedOverlayId) {
@@ -48,22 +66,30 @@ export function ClipPreviewTextOverlayLayer({
   }, [activeTextOverlays, selectedOverlayId]);
 
   useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) {
-      return;
-    }
-
-    const handleStageMouseDown = (event: MouseEvent) => {
-      if (event.target === stage) {
-        setSelectedOverlayId(null);
+    const handleDocumentPointerDown = (event: PointerEvent) => {
+      const path = event.composedPath();
+      const clickedInsideOverlay = path.some((node) => {
+        if (!(node instanceof HTMLElement)) {
+          return false;
+        }
+        return node.dataset.previewTextOverlay !== undefined;
+      });
+      if (clickedInsideOverlay) {
+        return;
       }
+      setSelectedOverlayId(null);
+      setSelectedTimelineClip(null, null);
     };
 
-    stage.addEventListener("mousedown", handleStageMouseDown);
+    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
     return () => {
-      stage.removeEventListener("mousedown", handleStageMouseDown);
+      document.removeEventListener(
+        "pointerdown",
+        handleDocumentPointerDown,
+        true
+      );
     };
-  }, [stageRef]);
+  }, [setSelectedTimelineClip, stageRef]);
 
   const handleOverlayDragStart = (
     event: React.MouseEvent<HTMLDivElement>,
@@ -161,6 +187,7 @@ export function ClipPreviewTextOverlayLayer({
       {activeTextOverlays.map((overlay) => (
         <div
           key={overlay.id}
+          data-preview-text-overlay
           className={`absolute select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)] ${
             selectedOverlayId === overlay.id ? "cursor-move" : "cursor-pointer"
           }`}
@@ -179,6 +206,7 @@ export function ClipPreviewTextOverlayLayer({
           onClick={(event) => {
             event.stopPropagation();
             setSelectedOverlayId(overlay.id);
+            setSelectedTimelineClip(overlay.id, "text");
           }}
           onMouseDown={(event) => handleOverlayDragStart(event, overlay.id)}
         >
