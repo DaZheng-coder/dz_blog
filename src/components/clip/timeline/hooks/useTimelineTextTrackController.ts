@@ -14,10 +14,10 @@ type UseTimelineTextTrackControllerOptions = {
   textOverlays: ClipTextOverlay[];
   setTextOverlays: SetTextOverlays;
   selectedTimelineClipIds: string[];
-  selectedTimelineTrack: "video" | "audio" | "text" | null;
+  selectedTimelineTrack: "video" | "audio" | "text" | "sticker" | null;
   setSelectedTimelineClip: (
     clipId: string | null,
-    track: "video" | "audio" | "text" | null,
+    track: "video" | "audio" | "text" | "sticker" | null,
     appendSelection?: boolean
   ) => void;
   draggingAsset: ClipDragAsset | null;
@@ -62,6 +62,7 @@ export function useTimelineTextTrackController({
     pixelsPerSecond,
     laneRef: textLaneRef,
     allowAssetInsert: false,
+    allowOverlap: true,
   });
 
   const renderedTextTrackClips =

@@ -1,37 +1,37 @@
-import type { ClipTextOverlay, ClipTrackClip } from "../../shared/types";
+import type { ClipStickerOverlay, ClipTrackClip } from "../../shared/types";
 import {
   applyTrackClipsToOverlays,
   overlaysToTrackClips,
   overlayToTrackClip,
 } from "./overlayTrackAdapter";
 
-export function toTextTrackClip(
-  overlay: ClipTextOverlay,
+export function toStickerTrackClip(
+  overlay: ClipStickerOverlay,
   minDurationSeconds: number
 ): ClipTrackClip {
   return overlayToTrackClip(
     overlay,
     minDurationSeconds,
-    (item) => item.text.trim() || "文本"
+    (item) => item.sticker || "贴纸"
   );
 }
 
-export function toTextTrackClips(
-  overlays: ClipTextOverlay[],
+export function toStickerTrackClips(
+  overlays: ClipStickerOverlay[],
   minDurationSeconds: number
 ): ClipTrackClip[] {
   return overlaysToTrackClips(
     overlays,
     minDurationSeconds,
-    (overlay) => overlay.text.trim() || "文本"
+    (overlay) => overlay.sticker || "贴纸"
   );
 }
 
-export function applyTextTrackClipsToOverlays(
-  prevOverlays: ClipTextOverlay[],
+export function applyStickerTrackClipsToOverlays(
+  prevOverlays: ClipStickerOverlay[],
   nextClips: ClipTrackClip[],
   minDurationSeconds: number
-): ClipTextOverlay[] {
+): ClipStickerOverlay[] {
   return applyTrackClipsToOverlays(
     prevOverlays,
     nextClips,

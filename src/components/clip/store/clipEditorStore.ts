@@ -33,7 +33,7 @@ type ClipEditorStore = {
   stickerOverlays: ClipStickerOverlay[];
   selectedTimelineClipId: string | null;
   selectedTimelineClipIds: string[];
-  selectedTimelineTrack: "video" | "audio" | "text" | null;
+  selectedTimelineTrack: "video" | "audio" | "text" | "sticker" | null;
   previewSource: ClipPreviewSource | null;
   selectedPreviewVideoInfo: PreviewVideoInfo | null;
   selectedInspectorAsset: ClipMediaAsset | null;
@@ -67,7 +67,7 @@ type ClipEditorStore = {
   addStickerOverlay: (overlay: Omit<ClipStickerOverlay, "id">) => string;
   setSelectedTimelineClip: (
     clipId: string | null,
-    track: "video" | "audio" | "text" | null,
+    track: "video" | "audio" | "text" | "sticker" | null,
     appendSelection?: boolean
   ) => void;
   setTimelinePlaying: (playing: boolean) => void;

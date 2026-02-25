@@ -3,20 +3,22 @@ import type { ClipTrackClip } from "../../shared/types";
 
 type UseTimelineSelectionActionsOptions = {
   timelineToolMode: "select" | "cut";
-  selectedTimelineTrack: "video" | "audio" | "text" | null;
+  selectedTimelineTrack: "video" | "audio" | "text" | "sticker" | null;
   selectedTimelineClipCount: number;
   pixelsPerSecond: number;
   setTimelineToolMode: (mode: "select" | "cut") => void;
   setSelectedTimelineClip: (
     clipId: string | null,
-    track: "video" | "audio" | "text" | null,
+    track: "video" | "audio" | "text" | "sticker" | null,
     appendSelection?: boolean
   ) => void;
   previewTimelineClip: (clip: ClipTrackClip) => void;
   onSplitVideo: () => void;
   onSplitAudio: () => void;
+  onSplitSticker: () => void;
   onSplitVideoClipAtTime: (clipId: string, splitTime: number) => void;
   onSplitAudioClipAtTime: (clipId: string, splitTime: number) => void;
+  onSplitStickerClipAtTime: (clipId: string, splitTime: number) => void;
   onSeekClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
 };
 
@@ -30,8 +32,10 @@ export function useTimelineSelectionActions({
   previewTimelineClip,
   onSplitVideo,
   onSplitAudio,
+  onSplitSticker,
   onSplitVideoClipAtTime,
   onSplitAudioClipAtTime,
+  onSplitStickerClipAtTime,
   onSeekClick,
 }: UseTimelineSelectionActionsOptions) {
   const handleSelectTool = useCallback(() => {
@@ -46,14 +50,25 @@ export function useTimelineSelectionActions({
     if (selectedTimelineClipCount > 0) {
       onSplitVideo();
       onSplitAudio();
+      onSplitSticker();
       return;
     }
     if (selectedTimelineTrack === "audio") {
       onSplitAudio();
       return;
     }
+    if (selectedTimelineTrack === "sticker") {
+      onSplitSticker();
+      return;
+    }
     onSplitVideo();
-  }, [onSplitAudio, onSplitVideo, selectedTimelineClipCount, selectedTimelineTrack]);
+  }, [
+    onSplitAudio,
+    onSplitSticker,
+    onSplitVideo,
+    selectedTimelineClipCount,
+    selectedTimelineTrack,
+  ]);
 
   const handleTrackClick = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -110,6 +125,25 @@ export function useTimelineSelectionActions({
     ]
   );
 
+  const handleStickerClipClick = useCallback(
+    (event: ReactMouseEvent<HTMLElement>, clip: ClipTrackClip, appendSelection: boolean) => {
+      if (timelineToolMode === "cut") {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const clickedOffsetPx = event.clientX - rect.left;
+        const splitTime = clip.startSeconds + clickedOffsetPx / pixelsPerSecond;
+        onSplitStickerClipAtTime(clip.id, splitTime);
+        return;
+      }
+      setSelectedTimelineClip(clip.id, "sticker", appendSelection);
+    },
+    [
+      onSplitStickerClipAtTime,
+      pixelsPerSecond,
+      setSelectedTimelineClip,
+      timelineToolMode,
+    ]
+  );
+
   return {
     handleSelectTool,
     handleCutTool,
@@ -117,5 +151,6 @@ export function useTimelineSelectionActions({
     handleTrackClick,
     handleVideoClipClick,
     handleAudioClipClick,
+    handleStickerClipClick,
   };
 }

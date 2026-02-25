@@ -103,13 +103,24 @@ export function useTimelinePlayback({
     const zoomBasis = Math.max(1, pixelsPerSecondState);
     const trailingPaddingSeconds =
       trackViewportWidth > 0 ? trackViewportWidth / zoomBasis / 3 : 0;
+    const playheadCoveredDurationSeconds =
+      currentTimeSeconds + trailingPaddingSeconds;
     if (maxClipEndSeconds > 0) {
-      return Math.max(1, maxClipEndSeconds + trailingPaddingSeconds);
+      return Math.max(
+        1,
+        maxClipEndSeconds + trailingPaddingSeconds,
+        playheadCoveredDurationSeconds
+      );
     }
     const viewportDuration =
       trackViewportWidth > 0 ? trackViewportWidth / zoomBasis : 60;
-    return Math.max(1, viewportDuration);
-  }, [maxClipEndSeconds, pixelsPerSecondState, trackViewportWidth]);
+    return Math.max(1, viewportDuration, playheadCoveredDurationSeconds);
+  }, [
+    currentTimeSeconds,
+    maxClipEndSeconds,
+    pixelsPerSecondState,
+    trackViewportWidth,
+  ]);
 
   const zoomBounds = useMemo(() => {
     const safeDuration = Math.max(1, trackDurationSeconds);

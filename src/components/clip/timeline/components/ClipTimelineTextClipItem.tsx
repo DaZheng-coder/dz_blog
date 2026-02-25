@@ -1,6 +1,7 @@
 import type {
   DragEvent as ReactDragEvent,
   MouseEvent as ReactMouseEvent,
+  ReactNode,
 } from "react";
 import { TRACK_COLORS } from "../utils/clipTimelineConfig";
 import type { ClipTrackClip } from "../../shared/types";
@@ -32,6 +33,9 @@ type ClipTimelineTextClipItemProps = {
   ) => void;
   onSelect: (clipId: string, appendSelection: boolean) => void;
   isSelected: boolean;
+  leadingIcon?: ReactNode;
+  leftResizeAriaLabel?: string;
+  rightResizeAriaLabel?: string;
 };
 
 export function ClipTimelineTextClipItem({
@@ -47,6 +51,9 @@ export function ClipTimelineTextClipItem({
   onResizeRightStart,
   onSelect,
   isSelected,
+  leadingIcon,
+  leftResizeAriaLabel = "调整文本开始时间",
+  rightResizeAriaLabel = "调整文本结束时间",
 }: ClipTimelineTextClipItemProps) {
   const clipWidth = Math.max(
     minWidthPx,
@@ -105,9 +112,9 @@ export function ClipTimelineTextClipItem({
         onMouseDown={(event) => onResizeLeftStart(event, clip)}
         onClick={(event) => event.stopPropagation()}
         disabled={timelineToolMode === "cut"}
-        aria-label="调整文本开始时间"
+        aria-label={leftResizeAriaLabel}
       />
-      <TextIcon className="h-4 w-4 fill-current" />
+      {leadingIcon ?? <TextIcon className="h-4 w-4 fill-current" />}
       <span className="truncate">{clip.title}</span>
       <button
         type="button"
@@ -116,7 +123,7 @@ export function ClipTimelineTextClipItem({
         onMouseDown={(event) => onResizeRightStart(event, clip)}
         onClick={(event) => event.stopPropagation()}
         disabled={timelineToolMode === "cut"}
-        aria-label="调整文本结束时间"
+        aria-label={rightResizeAriaLabel}
       />
     </article>
   );

@@ -76,6 +76,7 @@ type UseTimelineDragAndDropOptions = {
     asset: ClipDragAsset;
   }) => void;
   allowAssetInsert?: boolean;
+  allowOverlap?: boolean;
 };
 
 export function useTimelineDragAndDrop({
@@ -90,6 +91,7 @@ export function useTimelineDragAndDrop({
   acceptedMediaType,
   onAssetClipCreated,
   allowAssetInsert = true,
+  allowOverlap = false,
 }: UseTimelineDragAndDropOptions) {
   const dragOffsetSecondsRef = useRef(0);
   const dragPreviewSignatureRef = useRef("");
@@ -181,15 +183,14 @@ export function useTimelineDragAndDrop({
           return prev;
         }
 
-        const baseClips = prev.filter((clip) => clip.id !== movingClipId);
         const targetStart = Math.max(0, dropSeconds - dragOffsetSecondsRef.current);
-        const layout = buildRippleLayout(baseClips, {
-          ...movingClip,
-          startSeconds: targetStart,
-        });
-        movedClipForPreview =
-          layout.find((clip) => clip.id === movingClipId) || null;
-        return layout;
+        const movedClip = { ...movingClip, startSeconds: targetStart };
+        movedClipForPreview = movedClip;
+        if (allowOverlap) {
+          return prev.map((clip) => (clip.id === movingClipId ? movedClip : clip));
+        }
+        const baseClips = prev.filter((clip) => clip.id !== movingClipId);
+        return buildRippleLayout(baseClips, movedClip);
       });
       if (movedClipForPreview && selectedClipId === movingClipId) {
         onPreviewClip?.(movedClipForPreview);
@@ -272,6 +273,17 @@ export function useTimelineDragAndDrop({
       }
 
       const targetStart = Math.max(0, dropSeconds - dragOffsetSecondsRef.current);
+      if (allowOverlap) {
+        applyDragState(
+          {
+            title: movingClip.title,
+            startSeconds: targetStart,
+            durationSeconds: movingClip.durationSeconds,
+          },
+          null
+        );
+        return;
+      }
       const baseSortedClips = sortedClips.filter((clip) => clip.id !== movingClipId);
       const layout = buildRippleLayoutFromSorted(baseSortedClips, {
         ...movingClip,

@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useClipEditorStore } from "../../store/clipEditorStore";
@@ -11,6 +12,7 @@ import { ClipTimelinePlayhead } from "./ClipTimelinePlayhead";
 import { ClipTimelineRuler } from "./ClipTimelineRuler";
 import { ClipTimelineTrackLabels } from "./ClipTimelineTrackLabels";
 import { ClipTimelineTextClipItem } from "./ClipTimelineTextClipItem";
+import { ClipTimelineStickerClipItem } from "./ClipTimelineStickerClipItem";
 import { ClipTimelineToolbar } from "./ClipTimelineToolbar";
 import { useTimelineAudioPlayback } from "../hooks/useTimelineAudioPlayback";
 import { useTimelineClipEditing } from "../hooks/useTimelineClipEditing";
@@ -18,6 +20,7 @@ import { useTimelineDragAndDrop } from "../hooks/useTimelineDragAndDrop";
 import { useTimelineHotkeys } from "../hooks/useTimelineHotkeys";
 import { useTimelinePlayback } from "../hooks/useTimelinePlayback";
 import { useTimelineSelectionActions } from "../hooks/useTimelineSelectionActions";
+import { useTimelineStickerTrackController } from "../hooks/useTimelineStickerTrackController";
 import { useTimelineTextTrackController } from "../hooks/useTimelineTextTrackController";
 
 const TIMELINE_LEFT_INSET_PX = 20;
@@ -36,6 +39,7 @@ export function ClipTimelineTrackView() {
     timelineClips,
     audioTimelineClips,
     textOverlays,
+    stickerOverlays,
     timelinePlaying,
     timelineToolMode,
     setDraggingAsset,
@@ -45,7 +49,9 @@ export function ClipTimelineTrackView() {
     setTimelineClips,
     setAudioTimelineClips,
     setTextOverlays,
+    setStickerOverlays,
     setSelectedTimelineClip,
+    setSelectedInspectorSticker,
     previewTimelineClip,
     previewEmptyFrame,
     syncTimelineFrame,
@@ -58,6 +64,7 @@ export function ClipTimelineTrackView() {
       timelineClips: state.timelineClips,
       audioTimelineClips: state.audioTimelineClips,
       textOverlays: state.textOverlays,
+      stickerOverlays: state.stickerOverlays,
       timelinePlaying: state.timelinePlaying,
       timelineToolMode: state.timelineToolMode,
       setDraggingAsset: state.setDraggingAsset,
@@ -67,7 +74,9 @@ export function ClipTimelineTrackView() {
       setTimelineClips: state.setTimelineClips,
       setAudioTimelineClips: state.setAudioTimelineClips,
       setTextOverlays: state.setTextOverlays,
+      setStickerOverlays: state.setStickerOverlays,
       setSelectedTimelineClip: state.setSelectedTimelineClip,
+      setSelectedInspectorSticker: state.setSelectedInspectorSticker,
       previewTimelineClip: state.previewTimelineClip,
       previewEmptyFrame: state.previewEmptyFrame,
       syncTimelineFrame: state.syncTimelineFrame,
@@ -85,6 +94,7 @@ export function ClipTimelineTrackView() {
   });
 
   const audioLaneRef = useRef<HTMLDivElement>(null);
+  const stickerLaneRef = useRef<HTMLDivElement>(null);
   const textLaneRef = useRef<HTMLDivElement>(null);
 
   const videoDragAndDrop = useTimelineDragAndDrop({
@@ -192,11 +202,35 @@ export function ClipTimelineTrackView() {
     timelineWidthPx / Math.max(pixelsPerSecond, 0.0001);
   const minTextDurationSeconds =
     TEXT_TRACK_MIN_BLOCK_WIDTH_PX / Math.max(pixelsPerSecond, 0.0001);
+  const minStickerDurationSeconds =
+    TEXT_TRACK_MIN_BLOCK_WIDTH_PX / Math.max(pixelsPerSecond, 0.0001);
 
   const renderedVideoClips =
     videoDragAndDrop.ripplePreviewClips ?? timelineClips;
   const renderedAudioClips =
     audioDragAndDrop.ripplePreviewClips ?? audioTimelineClips;
+  const {
+    stickerDragAndDrop,
+    renderedStickerTrackClips,
+    stickerDragPreviewToneClassName,
+    selectedStickerClipIdSet,
+    deleteSelectedStickerClips,
+    handleStickerTrackEditStart,
+    handleSplitStickerOverlayAtTime,
+  } = useTimelineStickerTrackController({
+    stickerOverlays,
+    setStickerOverlays,
+    selectedTimelineClipIds,
+    selectedTimelineTrack,
+    setSelectedTimelineClip,
+    draggingAsset,
+    pixelsPerSecond,
+    maxTimelineSeconds,
+    minStickerDurationSeconds,
+    timelineToolMode,
+    stickerLaneRef,
+  });
+
   const {
     textDragAndDrop,
     renderedTextTrackClips,
@@ -225,11 +259,13 @@ export function ClipTimelineTrackView() {
     onDeleteVideo: videoClipEditing.deleteSelectedClip,
     onDeleteAudio: audioClipEditing.deleteSelectedClip,
     onDeleteText: deleteSelectedTextClips,
+    onDeleteSticker: deleteSelectedStickerClips,
   });
   const isAnyDragActive =
     Boolean(draggingAsset) ||
     Boolean(videoDragAndDrop.draggingClipId) ||
     Boolean(audioDragAndDrop.draggingClipId) ||
+    Boolean(stickerDragAndDrop.draggingClipId) ||
     Boolean(textDragAndDrop.draggingClipId);
   const { audioRef } = useTimelineAudioPlayback({
     audioClips: renderedAudioClips,
@@ -243,6 +279,7 @@ export function ClipTimelineTrackView() {
     handleTrackClick,
     handleVideoClipClick,
     handleAudioClipClick,
+    handleStickerClipClick,
   } = useTimelineSelectionActions({
     timelineToolMode,
     selectedTimelineTrack,
@@ -253,8 +290,10 @@ export function ClipTimelineTrackView() {
     previewTimelineClip,
     onSplitVideo: videoClipEditing.splitSelectedClipAtPlayhead,
     onSplitAudio: audioClipEditing.splitSelectedClipAtPlayhead,
+    onSplitSticker: () => {},
     onSplitVideoClipAtTime: videoClipEditing.splitClipByIdAtTime,
     onSplitAudioClipAtTime: audioClipEditing.splitClipByIdAtTime,
+    onSplitStickerClipAtTime: handleSplitStickerOverlayAtTime,
     onSeekClick: handleSeekClick,
   });
 
@@ -290,6 +329,16 @@ export function ClipTimelineTrackView() {
       timelineWidthPx,
       trackViewportWidth,
     ]
+  );
+  const laneWithInspectorResetProps = useMemo(
+    () => ({
+      ...laneSharedProps,
+      onTrackClick: (event: ReactMouseEvent<HTMLDivElement>) => {
+        setSelectedInspectorSticker(null);
+        laneSharedProps.onTrackClick(event);
+      },
+    }),
+    [laneSharedProps, setSelectedInspectorSticker]
   );
 
   return (
@@ -335,6 +384,83 @@ export function ClipTimelineTrackView() {
 
               <div className="space-y-2">
                 <ClipTimelineLane
+                  laneRef={stickerLaneRef}
+                  laneId="sticker-1"
+                  laneHeightClassName="h-5"
+                  laneClassName="border border-dashed border-white/12 bg-white/[0.015]"
+                  styleBackgroundImage="repeating-linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 1px, transparent 1px, transparent 100%), repeating-linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05) 1px, transparent 1px, transparent 100%)"
+                  emptyHint="暂无贴纸"
+                  clips={renderedStickerTrackClips}
+                  compact
+                  selectedClipIds={[]}
+                  draggingClipId={stickerDragAndDrop.draggingClipId}
+                  resizingClipId={null}
+                  dragPreview={stickerDragAndDrop.dragPreview}
+                  {...laneWithInspectorResetProps}
+                  onTrackDragOver={stickerDragAndDrop.handleTrackDragOver}
+                  onTrackDragLeave={stickerDragAndDrop.handleTrackDragLeave}
+                  onTrackDrop={stickerDragAndDrop.handleTrackDrop}
+                  onClipClick={handleStickerClipClick}
+                  onClipDragStart={stickerDragAndDrop.handleClipDragStart}
+                  onClipDragEnd={stickerDragAndDrop.handleClipDragEnd}
+                  onClipLeftResizeStart={noopClipResizeStart}
+                  onClipResizeStart={noopClipResizeStart}
+                  dragPreviewLayoutClassName="top-0 h-4.5 px-1 py-0"
+                  dragPreviewToneClassName={stickerDragPreviewToneClassName}
+                  renderClip={(clip, index) => (
+                    <ClipTimelineStickerClipItem
+                      key={clip.id}
+                      clip={clip}
+                      index={index}
+                      pixelsPerSecond={pixelsPerSecond}
+                      minWidthPx={TEXT_TRACK_MIN_BLOCK_WIDTH_PX}
+                      timelineToolMode={timelineToolMode}
+                      onDragStart={stickerDragAndDrop.handleClipDragStart}
+                      onDragEnd={stickerDragAndDrop.handleClipDragEnd}
+                      onSplitAtClientX={(targetClip, clientX, rectLeft) => {
+                        const clickedOffsetPx = clientX - rectLeft;
+                        const splitTime =
+                          targetClip.startSeconds +
+                          clickedOffsetPx / Math.max(pixelsPerSecond, 0.0001);
+                        handleSplitStickerOverlayAtTime(targetClip.id, splitTime);
+                      }}
+                      onResizeLeftStart={(event, targetClip) =>
+                        handleStickerTrackEditStart(
+                          event,
+                          targetClip.id,
+                          "resize-left",
+                          targetClip.startSeconds,
+                          targetClip.startSeconds + targetClip.durationSeconds
+                        )
+                      }
+                      onResizeRightStart={(event, targetClip) =>
+                        handleStickerTrackEditStart(
+                          event,
+                          targetClip.id,
+                          "resize-right",
+                          targetClip.startSeconds,
+                          targetClip.startSeconds + targetClip.durationSeconds
+                        )
+                      }
+                      onSelect={(targetClipId, appendSelection) => {
+                        setSelectedTimelineClip(
+                          targetClipId,
+                          "sticker",
+                          appendSelection
+                        );
+                        const overlay = stickerOverlays.find(
+                          (item) => item.id === targetClipId
+                        );
+                        if (overlay) {
+                          setSelectedInspectorSticker(overlay);
+                        }
+                      }}
+                      isSelected={selectedStickerClipIdSet.has(clip.id)}
+                    />
+                  )}
+                />
+
+                <ClipTimelineLane
                   laneRef={textLaneRef}
                   laneId="text-1"
                   laneHeightClassName="h-5"
@@ -347,7 +473,7 @@ export function ClipTimelineTrackView() {
                   draggingClipId={textDragAndDrop.draggingClipId}
                   resizingClipId={null}
                   dragPreview={textDragAndDrop.dragPreview}
-                  {...laneSharedProps}
+                  {...laneWithInspectorResetProps}
                   onTrackDragOver={textDragAndDrop.handleTrackDragOver}
                   onTrackDragLeave={textDragAndDrop.handleTrackDragLeave}
                   onTrackDrop={textDragAndDrop.handleTrackDrop}
@@ -397,13 +523,14 @@ export function ClipTimelineTrackView() {
                             targetClip.startSeconds + targetClip.durationSeconds
                           )
                         }
-                        onSelect={(targetClipId, appendSelection) =>
+                        onSelect={(targetClipId, appendSelection) => {
                           setSelectedTimelineClip(
                             targetClipId,
                             "text",
                             appendSelection
-                          )
-                        }
+                          );
+                          setSelectedInspectorSticker(null);
+                        }}
                         isSelected={selectedTextClipIdSet.has(clip.id)}
                       />
                     );
@@ -422,7 +549,7 @@ export function ClipTimelineTrackView() {
                   draggingClipId={videoDragAndDrop.draggingClipId}
                   resizingClipId={videoClipEditing.resizingClipId}
                   dragPreview={videoDragAndDrop.dragPreview}
-                  {...laneSharedProps}
+                  {...laneWithInspectorResetProps}
                   onTrackDragOver={videoDragAndDrop.handleTrackDragOver}
                   onTrackDragLeave={videoDragAndDrop.handleTrackDragLeave}
                   onTrackDrop={videoDragAndDrop.handleTrackDrop}
@@ -448,7 +575,7 @@ export function ClipTimelineTrackView() {
                   draggingClipId={audioDragAndDrop.draggingClipId}
                   resizingClipId={audioClipEditing.resizingClipId}
                   dragPreview={audioDragAndDrop.dragPreview}
-                  {...laneSharedProps}
+                  {...laneWithInspectorResetProps}
                   onTrackDragOver={audioDragAndDrop.handleTrackDragOver}
                   onTrackDragLeave={audioDragAndDrop.handleTrackDragLeave}
                   onTrackDrop={audioDragAndDrop.handleTrackDrop}
