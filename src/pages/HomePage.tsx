@@ -327,15 +327,6 @@ developer.createAmazingThings();`}</code>
         </div>
       </section>
 
-      <Link
-        to="/chat"
-        className="fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#f59e0b] to-[#d97706] text-[#0a0a0b] shadow-[0_12px_40px_rgba(245,158,11,0.4)] transition hover:scale-105"
-        aria-label="打开 AI 对话"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-      </Link>
     </main>
   );
 }

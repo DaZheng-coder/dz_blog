@@ -1,11 +1,13 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ArticleListPage } from "./pages/ArticleListPage";
 import { ArticleDetailPage } from "./pages/ArticleDetailPage";
+import { GlobalChatEntry } from "./components/layout/GlobalChatEntry";
 import { ChatPage } from "./pages/ChatPage";
 import { HomePage } from "./pages/HomePage";
 import { MindMapPage } from "./pages/MindMapPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { ClipPage } from "./pages/ClipPage";
+import { ThreeDPage } from "./pages/ThreeDPage";
 
 function App() {
   return (
@@ -18,8 +20,10 @@ function App() {
         <Route path="/articles" element={<ArticleListPage />} />
         <Route path="/articles/:slug" element={<ArticleDetailPage />} />
         <Route path="/clip" element={<ClipPage />} />
+        <Route path="/three-d" element={<ThreeDPage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
+      <GlobalChatEntry />
     </BrowserRouter>
   );
 }
