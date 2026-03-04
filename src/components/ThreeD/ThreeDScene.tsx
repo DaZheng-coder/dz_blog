@@ -25,7 +25,6 @@ type ThreeDSceneProps = {
   onInteract: (id: string) => void;
 };
 
-const WORLD_LIMIT = 38;
 const INTERACT_RANGE = 4;
 const RTS_CAMERA_OFFSET = { x: 22, y: 30, z: 22 };
 const CAR_MODEL_Y_ROT_OFFSET = Math.PI;
@@ -33,7 +32,7 @@ const TARGET_CAR_FOOTPRINT = 2;
 const CAR_SCALE_MULTIPLIER = 1.5;
 const EXHAUST_PARTICLE_COUNT = 130;
 const carModelUrl = new URL(
-  "../../3DModel/low_poly_car/scene.gltf",
+  "../../3DModel/soviet_car._vaz-2103_zhiguli/scene.gltf",
   import.meta.url
 ).href;
 
@@ -53,7 +52,11 @@ class ExhaustParticles {
     this.life = new Float32Array(count);
   }
 
-  private spawnAt(index: number, origin: THREE.Vector3, forward: THREE.Vector3) {
+  private spawnAt(
+    index: number,
+    origin: THREE.Vector3,
+    forward: THREE.Vector3
+  ) {
     const i3 = index * 3;
     const side = index % 2 === 0 ? -1 : 1;
 
@@ -68,13 +71,20 @@ class ExhaustParticles {
     this.positions[i3 + 2] = this.tmpSpawn.z + (Math.random() - 0.5) * 0.08;
 
     const baseBackSpeed = 0.85 + Math.random() * 0.55;
-    this.velocities[i3] = -forward.x * baseBackSpeed + (Math.random() - 0.5) * 0.35;
+    this.velocities[i3] =
+      -forward.x * baseBackSpeed + (Math.random() - 0.5) * 0.35;
     this.velocities[i3 + 1] = 0.18 + Math.random() * 0.2;
-    this.velocities[i3 + 2] = -forward.z * baseBackSpeed + (Math.random() - 0.5) * 0.35;
+    this.velocities[i3 + 2] =
+      -forward.z * baseBackSpeed + (Math.random() - 0.5) * 0.35;
     this.life[index] = 0.38 + Math.random() * 0.28;
   }
 
-  step(delta: number, origin: THREE.Vector3, forward: THREE.Vector3, intensity: number) {
+  step(
+    delta: number,
+    origin: THREE.Vector3,
+    forward: THREE.Vector3,
+    intensity: number
+  ) {
     const emitPerSecond = intensity * 30;
     this.emitCarry += emitPerSecond * delta;
 
@@ -126,8 +136,10 @@ export function ThreeDScene({
 }: ThreeDSceneProps) {
   const { scene } = useGLTF(carModelUrl);
   const vehicleRef = useRef<THREE.Group>(null);
-  const exhaustPointsRef = useRef<THREE.Points>(null);
-  const exhaustMaterialRef = useRef<THREE.PointsMaterial>(null);
+  const exhaustLightPointsRef = useRef<THREE.Points>(null);
+  const exhaustDarkPointsRef = useRef<THREE.Points>(null);
+  const exhaustLightMaterialRef = useRef<THREE.PointsMaterial>(null);
+  const exhaustDarkMaterialRef = useRef<THREE.PointsMaterial>(null);
   const velocityRef = useRef(0);
   const yawRef = useRef(0);
   const nearbyIdRef = useRef<string | null>(null);
@@ -138,7 +150,7 @@ export function ThreeDScene({
   const vehiclePosition = useMemo(() => new THREE.Vector3(), []);
   const exhaustParticles = useMemo(
     () => new ExhaustParticles(EXHAUST_PARTICLE_COUNT),
-    [],
+    []
   );
   const carModel = useMemo(() => {
     const model = scene.clone(true);
@@ -195,22 +207,13 @@ export function ThreeDScene({
 
     const speedRatio = Math.min(Math.abs(velocityRef.current) / maxSpeed, 1);
     const steeringDirection = velocityRef.current >= 0 ? 1 : -1;
-    if (keys.a) yawRef.current += turnSpeed * speedRatio * steeringDirection * delta;
-    if (keys.d) yawRef.current -= turnSpeed * speedRatio * steeringDirection * delta;
+    if (keys.a)
+      yawRef.current += turnSpeed * speedRatio * steeringDirection * delta;
+    if (keys.d)
+      yawRef.current -= turnSpeed * speedRatio * steeringDirection * delta;
 
     forward.set(Math.sin(yawRef.current), 0, Math.cos(yawRef.current));
     vehicle.position.addScaledVector(forward, velocityRef.current * delta);
-
-    vehicle.position.x = THREE.MathUtils.clamp(
-      vehicle.position.x,
-      -WORLD_LIMIT,
-      WORLD_LIMIT
-    );
-    vehicle.position.z = THREE.MathUtils.clamp(
-      vehicle.position.z,
-      -WORLD_LIMIT,
-      WORLD_LIMIT
-    );
 
     vehicle.rotation.y = yawRef.current;
 
@@ -219,15 +222,28 @@ export function ThreeDScene({
     const exhaustIntensity = THREE.MathUtils.clamp((speed - 1.8) / 10, 0, 1);
     exhaustParticles.step(delta, vehicle.position, forward, exhaustIntensity);
 
-    if (exhaustPointsRef.current) {
-      const positionAttr = exhaustPointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
+    if (exhaustLightPointsRef.current) {
+      const positionAttr = exhaustLightPointsRef.current.geometry.attributes
+        .position as THREE.BufferAttribute;
       positionAttr.needsUpdate = true;
-      exhaustPointsRef.current.visible = exhaustParticles.hasLiveParticle;
+      exhaustLightPointsRef.current.visible = exhaustParticles.hasLiveParticle;
     }
 
-    if (exhaustMaterialRef.current) {
-      exhaustMaterialRef.current.opacity = 0.05 + exhaustIntensity * 0.1;
-      exhaustMaterialRef.current.size = 0.18 + exhaustIntensity * 0.12;
+    if (exhaustDarkPointsRef.current) {
+      const positionAttr = exhaustDarkPointsRef.current.geometry.attributes
+        .position as THREE.BufferAttribute;
+      positionAttr.needsUpdate = true;
+      exhaustDarkPointsRef.current.visible = exhaustParticles.hasLiveParticle;
+    }
+
+    if (exhaustLightMaterialRef.current) {
+      exhaustLightMaterialRef.current.opacity = 0.09 + exhaustIntensity * 0.14;
+      exhaustLightMaterialRef.current.size = 0.2 + exhaustIntensity * 0.12;
+    }
+
+    if (exhaustDarkMaterialRef.current) {
+      exhaustDarkMaterialRef.current.opacity = 0.05 + exhaustIntensity * 0.09;
+      exhaustDarkMaterialRef.current.size = 0.16 + exhaustIntensity * 0.1;
     }
 
     desiredCamera.set(
@@ -288,11 +304,12 @@ export function ThreeDScene({
         onPointerDown={stopPointer}
       >
         <planeGeometry args={[120, 120]} />
-        <meshStandardMaterial color="#1a232e" />
+        <meshStandardMaterial color="white" />
       </mesh>
 
       <Grid
         args={[120, 120]}
+        position={[0, 0.03, 0]}
         cellSize={2}
         cellThickness={0.5}
         sectionSize={8}
@@ -300,6 +317,7 @@ export function ThreeDScene({
         cellColor="#223246"
         sectionColor="#38506a"
         fadeDistance={95}
+        renderOrder={10}
       />
 
       {interactables.map((item) => {
@@ -332,7 +350,7 @@ export function ThreeDScene({
         />
       </group>
 
-      <points ref={exhaustPointsRef} frustumCulled={false} visible={false}>
+      <points ref={exhaustLightPointsRef} frustumCulled={false} visible={false}>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
@@ -341,13 +359,34 @@ export function ThreeDScene({
           />
         </bufferGeometry>
         <pointsMaterial
-          ref={exhaustMaterialRef}
-          color="#d7dee6"
-          size={0.18}
+          ref={exhaustLightMaterialRef}
+          color="#3a3f46"
+          size={0.2}
           sizeAttenuation
           transparent
-          opacity={0.08}
+          opacity={0.12}
           depthWrite={false}
+          depthTest={false}
+        />
+      </points>
+
+      <points ref={exhaustDarkPointsRef} frustumCulled={false} visible={false}>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            args={[exhaustParticles.positions, 3]}
+            usage={THREE.DynamicDrawUsage}
+          />
+        </bufferGeometry>
+        <pointsMaterial
+          ref={exhaustDarkMaterialRef}
+          color="#191c20"
+          size={0.16}
+          sizeAttenuation
+          transparent
+          opacity={0.06}
+          depthWrite={false}
+          depthTest={false}
         />
       </points>
     </>
