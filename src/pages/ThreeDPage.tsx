@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Canvas } from "@react-three/fiber";
 import { ThreeDScene, type Interactable, type KeyState } from "../components/ThreeD/ThreeDScene";
@@ -8,6 +8,9 @@ const interactables: Interactable[] = [
   { id: "supply-box", name: "补给箱", position: [-10, 0.75, -6] },
   { id: "signal-tower", name: "信号塔", position: [3, 0.75, -13] },
 ];
+const interactableNameById = new Map(interactables.map((item) => [item.id, item.name]));
+const controlKeys = new Set(["w", "a", "s", "d", "f"]);
+const cameraConfig = { position: [22, 30, 22] as [number, number, number], fov: 38 };
 
 function useKeyboardControls() {
   const keysRef = useRef<KeyState>({ w: false, a: false, s: false, d: false });
@@ -17,7 +20,7 @@ function useKeyboardControls() {
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
 
-      if (["w", "a", "s", "d", "f"].includes(key)) {
+      if (controlKeys.has(key)) {
         event.preventDefault();
       }
 
@@ -57,9 +60,9 @@ export function ThreeDPage() {
   const [activeSet, setActiveSet] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState("WASD 控制车辆，按 F 与附近物体交互");
 
-  const onInteract = useCallback((id: string) => {
-    const target = interactables.find((item) => item.id === id);
-    if (!target) {
+  const onInteract = (id: string) => {
+    const name = interactableNameById.get(id);
+    if (!name) {
       return;
     }
 
@@ -67,28 +70,20 @@ export function ThreeDPage() {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-        setToast(`已关闭 ${target.name}`);
+        setToast(`已关闭 ${name}`);
       } else {
         next.add(id);
-        setToast(`已激活 ${target.name}`);
+        setToast(`已激活 ${name}`);
       }
       return next;
     });
-  }, []);
+  };
 
-  const nearbyLabel = nearbyId
-    ? interactables.find((item) => item.id === nearbyId)?.name ?? null
-    : null;
+  const nearbyLabel = nearbyId ? interactableNameById.get(nearbyId) ?? null : null;
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[#0b0f14] text-white">
-      <Canvas
-        camera={{
-          position: [22, 30, 22],
-          fov: 38,
-        }}
-        shadows
-      >
+      <Canvas camera={cameraConfig} shadows>
         <Suspense fallback={null}>
           <ThreeDScene
             keysRef={keysRef}
