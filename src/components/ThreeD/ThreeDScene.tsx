@@ -5,6 +5,7 @@ import { InteractableObjects } from "./InteractableObjects";
 import { VehicleModel } from "./VehicleModel";
 import { ExhaustEffect } from "./ExhaustEffect";
 import { TireMarks } from "./TireMarks";
+import { TextPlate3D } from "./TextPlate3D";
 import type { Interactable, KeyState, VehicleTelemetry } from "./types";
 export type { Interactable, KeyState } from "./types";
 
@@ -45,6 +46,13 @@ export function ThreeDScene({
   return (
     <>
       <SceneEnvironment />
+      <TextPlate3D
+        text="I Love Three.js"
+        position={[-6, 0.001, -10]}
+        rotation={[0, -Math.PI / 8, 0]}
+        plateSize={[15, 3.6]}
+        textSize={1.35}
+      />
       <InteractableObjects
         vehicleRef={vehicleRef}
         interactables={interactables}
