@@ -115,12 +115,20 @@ export function ThreeDPage() {
         {toast}
       </div>
 
-      <Link
-        to="/"
-        className="absolute right-4 top-4 z-20 rounded-md border border-white/25 bg-black/50 px-3 py-2 text-sm text-white transition hover:bg-black/70"
-      >
-        返回首页
-      </Link>
+      <div className="absolute right-4 top-4 z-20 flex gap-2">
+        <Link
+          to="/model-inspector"
+          className="rounded-md border border-white/25 bg-black/50 px-3 py-2 text-sm text-white transition hover:bg-black/70"
+        >
+          模型分析工具
+        </Link>
+        <Link
+          to="/"
+          className="rounded-md border border-white/25 bg-black/50 px-3 py-2 text-sm text-white transition hover:bg-black/70"
+        >
+          返回首页
+        </Link>
+      </div>
     </div>
   );
 }

@@ -31,10 +31,22 @@ const CAR_MODEL_Y_ROT_OFFSET = Math.PI;
 const TARGET_CAR_FOOTPRINT = 2;
 const CAR_SCALE_MULTIPLIER = 1.5;
 const EXHAUST_PARTICLE_COUNT = 130;
+const MAX_WHEEL_STEER_ANGLE = THREE.MathUtils.degToRad(30);
+const WHEEL_STEER_SMOOTH = 12;
+const FRONT_WHEEL_LOCAL_Z_SIGN = -1;
+const LEFT_FRONT_STEER_SIGN = 1;
+const RIGHT_FRONT_STEER_SIGN = 1;
 const carModelUrl = new URL(
   "../../3DModel/soviet_car._vaz-2103_zhiguli/scene.gltf",
   import.meta.url
 ).href;
+
+type SteeringWheel = {
+  side: "left" | "right";
+  pivot: THREE.Object3D;
+  basePivotRotation: THREE.Euler;
+  steerSign: number;
+};
 
 class ExhaustParticles {
   positions: Float32Array;
@@ -142,6 +154,7 @@ export function ThreeDScene({
   const exhaustDarkMaterialRef = useRef<THREE.PointsMaterial>(null);
   const velocityRef = useRef(0);
   const yawRef = useRef(0);
+  const steerAngleRef = useRef(0);
   const nearbyIdRef = useRef<string | null>(null);
   const lastInteractTickRef = useRef(0);
 
@@ -163,6 +176,75 @@ export function ThreeDScene({
     });
     return model;
   }, [scene]);
+  const steeringWheels = useMemo<SteeringWheel[]>(() => {
+    const vehicleBox = new THREE.Box3().setFromObject(carModel);
+    const vehicleSize = vehicleBox.getSize(new THREE.Vector3());
+    const candidates: Array<{ node: THREE.Object3D; center: THREE.Vector3 }> = [];
+
+    carModel.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.geometry) {
+        return;
+      }
+
+      const bounds = new THREE.Box3().setFromObject(mesh);
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
+      const dims = [size.x, size.y, size.z].sort((a, b) => a - b);
+      const thickness = dims[0];
+      const radiusA = dims[1];
+      const radiusB = dims[2];
+
+      const wheelLike =
+        thickness > 0.005 &&
+        thickness < radiusA * 0.65 &&
+        radiusA > 0.04 &&
+        radiusB / Math.max(radiusA, 0.001) < 1.9;
+      const nearGround = center.y <= vehicleBox.min.y + vehicleSize.y * 0.45;
+      const sideOffset = Math.abs(center.x) >= vehicleSize.x * 0.18;
+
+      if (wheelLike && nearGround && sideOffset) {
+        candidates.push({ node: mesh, center });
+      }
+    });
+
+    carModel.updateWorldMatrix(true, true);
+    const frontCandidates = candidates
+      .filter(({ center }) => center.z * FRONT_WHEEL_LOCAL_Z_SIGN > 0)
+      .sort((a, b) => Math.abs(b.center.x) - Math.abs(a.center.x))
+      .slice(0, 2);
+
+    const selected =
+      frontCandidates.length >= 2
+        ? frontCandidates
+        : candidates.sort((a, b) => Math.abs(b.center.x) - Math.abs(a.center.x)).slice(0, 2);
+
+    const steering: SteeringWheel[] = [];
+    for (const { node, center } of selected) {
+      const parent = node.parent;
+      if (!parent) {
+        continue;
+      }
+
+      const wheelCenterWorld = center.clone();
+      const wheelCenterLocal = parent.worldToLocal(wheelCenterWorld);
+      const pivot = new THREE.Object3D();
+      pivot.name = `${node.name || "wheel"}_steer_pivot`;
+      pivot.position.copy(wheelCenterLocal);
+      parent.add(pivot);
+      pivot.attach(node);
+
+      const side: "left" | "right" = center.x <= 0 ? "left" : "right";
+      steering.push({
+        side,
+        pivot,
+        basePivotRotation: pivot.rotation.clone(),
+        steerSign: side === "left" ? LEFT_FRONT_STEER_SIGN : RIGHT_FRONT_STEER_SIGN,
+      });
+    }
+
+    return steering;
+  }, [carModel]);
   const carTransform = useMemo(() => {
     const bbox = new THREE.Box3().setFromObject(carModel);
     const size = bbox.getSize(new THREE.Vector3());
@@ -211,6 +293,20 @@ export function ThreeDScene({
       yawRef.current += turnSpeed * speedRatio * steeringDirection * delta;
     if (keys.d)
       yawRef.current -= turnSpeed * speedRatio * steeringDirection * delta;
+
+    const steerInput = (keys.a ? 1 : 0) - (keys.d ? 1 : 0);
+    const targetSteerAngle = steerInput * MAX_WHEEL_STEER_ANGLE;
+    steerAngleRef.current = THREE.MathUtils.damp(
+      steerAngleRef.current,
+      targetSteerAngle,
+      WHEEL_STEER_SMOOTH,
+      delta
+    );
+
+    for (const wheel of steeringWheels) {
+      wheel.pivot.rotation.copy(wheel.basePivotRotation);
+      wheel.pivot.rotation.z += steerAngleRef.current * wheel.steerSign;
+    }
 
     forward.set(Math.sin(yawRef.current), 0, Math.cos(yawRef.current));
     vehicle.position.addScaledVector(forward, velocityRef.current * delta);

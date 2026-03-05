@@ -8,6 +8,7 @@ import { MindMapPage } from "./pages/MindMapPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { ClipPage } from "./pages/ClipPage";
 import { ThreeDPage } from "./pages/ThreeDPage";
+import { ModelInspectorPage } from "./pages/ModelInspectorPage";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/articles/:slug" element={<ArticleDetailPage />} />
         <Route path="/clip" element={<ClipPage />} />
         <Route path="/three-d" element={<ThreeDPage />} />
+        <Route path="/model-inspector" element={<ModelInspectorPage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
       <GlobalChatEntry />
