@@ -1,20 +1,15 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
-import { Grid, Html, useGLTF } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-
-export type KeyState = {
-  w: boolean;
-  a: boolean;
-  s: boolean;
-  d: boolean;
-};
-
-export type Interactable = {
-  id: string;
-  name: string;
-  position: [number, number, number];
-};
+import { ExhaustParticles } from "./ExhaustParticles";
+import { SceneEnvironment } from "./SceneEnvironment";
+import { InteractableObjects } from "./InteractableObjects";
+import { VehicleModel } from "./VehicleModel";
+import { ExhaustEffect } from "./ExhaustEffect";
+import { TireMarks, type TireMark } from "./TireMarks";
+import type { Interactable, KeyState } from "./types";
+export type { Interactable, KeyState } from "./types";
 
 type ThreeDSceneProps = {
   keysRef: React.RefObject<KeyState>;
@@ -36,6 +31,10 @@ const WHEEL_STEER_SMOOTH = 12;
 const FRONT_WHEEL_LOCAL_Z_SIGN = -1;
 const LEFT_FRONT_STEER_SIGN = 1;
 const RIGHT_FRONT_STEER_SIGN = 1;
+const TIRE_MARK_SPAWN_DISTANCE = 0.45;
+const TIRE_MARK_MIN_SPEED = 2;
+const TIRE_MARK_LIFETIME = 4.2;
+const MAX_TIRE_MARKS = 220;
 const carModelUrl = new URL(
   "../../3DModel/soviet_car._vaz-2103_zhiguli/scene.gltf",
   import.meta.url
@@ -48,95 +47,13 @@ type SteeringWheel = {
   steerSign: number;
 };
 
-class ExhaustParticles {
-  positions: Float32Array;
-  velocities: Float32Array;
-  life: Float32Array;
-  cursor = 0;
-  emitCarry = 0;
-  hasLiveParticle = false;
-  private tmpRight = new THREE.Vector3();
-  private tmpSpawn = new THREE.Vector3();
-
-  constructor(count: number) {
-    this.positions = new Float32Array(count * 3).fill(-999);
-    this.velocities = new Float32Array(count * 3);
-    this.life = new Float32Array(count);
-  }
-
-  private spawnAt(
-    index: number,
-    origin: THREE.Vector3,
-    forward: THREE.Vector3
-  ) {
-    const i3 = index * 3;
-    const side = index % 2 === 0 ? -1 : 1;
-
-    this.tmpRight.set(forward.z, 0, -forward.x).normalize();
-    this.tmpSpawn
-      .copy(origin)
-      .addScaledVector(forward, -1.2)
-      .addScaledVector(this.tmpRight, 0.34 * side);
-
-    this.positions[i3] = this.tmpSpawn.x + (Math.random() - 0.5) * 0.08;
-    this.positions[i3 + 1] = 0.36 + Math.random() * 0.08;
-    this.positions[i3 + 2] = this.tmpSpawn.z + (Math.random() - 0.5) * 0.08;
-
-    const baseBackSpeed = 0.85 + Math.random() * 0.55;
-    this.velocities[i3] =
-      -forward.x * baseBackSpeed + (Math.random() - 0.5) * 0.35;
-    this.velocities[i3 + 1] = 0.18 + Math.random() * 0.2;
-    this.velocities[i3 + 2] =
-      -forward.z * baseBackSpeed + (Math.random() - 0.5) * 0.35;
-    this.life[index] = 0.38 + Math.random() * 0.28;
-  }
-
-  step(
-    delta: number,
-    origin: THREE.Vector3,
-    forward: THREE.Vector3,
-    intensity: number
-  ) {
-    const emitPerSecond = intensity * 30;
-    this.emitCarry += emitPerSecond * delta;
-
-    while (this.emitCarry >= 1) {
-      this.emitCarry -= 1;
-      const index = this.cursor % this.life.length;
-      this.cursor += 1;
-      this.spawnAt(index, origin, forward);
-    }
-
-    this.hasLiveParticle = false;
-    for (let i = 0; i < this.life.length; i += 1) {
-      const i3 = i * 3;
-      const currentLife = this.life[i];
-      if (currentLife <= 0) {
-        continue;
-      }
-
-      this.hasLiveParticle = true;
-      const nextLife = currentLife - delta;
-      this.life[i] = nextLife;
-
-      if (nextLife <= 0) {
-        this.positions[i3] = -999;
-        this.positions[i3 + 1] = -999;
-        this.positions[i3 + 2] = -999;
-        continue;
-      }
-
-      this.positions[i3] += this.velocities[i3] * delta;
-      this.positions[i3 + 1] += this.velocities[i3 + 1] * delta;
-      this.positions[i3 + 2] += this.velocities[i3 + 2] * delta;
-
-      this.velocities[i3] *= 0.975;
-      this.velocities[i3 + 1] += 0.2 * delta;
-      this.velocities[i3 + 1] *= 0.985;
-      this.velocities[i3 + 2] *= 0.975;
-    }
-  }
-}
+type WheelDetection = {
+  steeringWheels: SteeringWheel[];
+  rearWheels: {
+    left: THREE.Object3D | null;
+    right: THREE.Object3D | null;
+  };
+};
 
 export function ThreeDScene({
   keysRef,
@@ -157,8 +74,17 @@ export function ThreeDScene({
   const steerAngleRef = useRef(0);
   const nearbyIdRef = useRef<string | null>(null);
   const lastInteractTickRef = useRef(0);
+  const tireMarkIdRef = useRef(0);
+  const lastTireCleanupRef = useRef(0);
+  const rearLeftLastEmitRef = useRef<THREE.Vector3 | null>(null);
+  const rearRightLastEmitRef = useRef<THREE.Vector3 | null>(null);
+  const [tireMarks, setTireMarks] = useState<TireMark[]>([]);
 
   const forward = useMemo(() => new THREE.Vector3(), []);
+  const right = useMemo(() => new THREE.Vector3(), []);
+  const rearCenter = useMemo(() => new THREE.Vector3(), []);
+  const rearLeftPos = useMemo(() => new THREE.Vector3(), []);
+  const rearRightPos = useMemo(() => new THREE.Vector3(), []);
   const desiredCamera = useMemo(() => new THREE.Vector3(), []);
   const vehiclePosition = useMemo(() => new THREE.Vector3(), []);
   const exhaustParticles = useMemo(
@@ -176,10 +102,11 @@ export function ThreeDScene({
     });
     return model;
   }, [scene]);
-  const steeringWheels = useMemo<SteeringWheel[]>(() => {
+  const wheelDetection = useMemo<WheelDetection>(() => {
     const vehicleBox = new THREE.Box3().setFromObject(carModel);
     const vehicleSize = vehicleBox.getSize(new THREE.Vector3());
-    const candidates: Array<{ node: THREE.Object3D; center: THREE.Vector3 }> = [];
+    const candidates: Array<{ node: THREE.Object3D; center: THREE.Vector3 }> =
+      [];
 
     carModel.traverse((child) => {
       const mesh = child as THREE.Mesh;
@@ -213,11 +140,17 @@ export function ThreeDScene({
       .filter(({ center }) => center.z * FRONT_WHEEL_LOCAL_Z_SIGN > 0)
       .sort((a, b) => Math.abs(b.center.x) - Math.abs(a.center.x))
       .slice(0, 2);
+    const rearCandidates = candidates
+      .filter(({ center }) => center.z * FRONT_WHEEL_LOCAL_Z_SIGN < 0)
+      .sort((a, b) => Math.abs(b.center.x) - Math.abs(a.center.x))
+      .slice(0, 2);
 
     const selected =
       frontCandidates.length >= 2
         ? frontCandidates
-        : candidates.sort((a, b) => Math.abs(b.center.x) - Math.abs(a.center.x)).slice(0, 2);
+        : candidates
+            .sort((a, b) => Math.abs(b.center.x) - Math.abs(a.center.x))
+            .slice(0, 2);
 
     const steering: SteeringWheel[] = [];
     for (const { node, center } of selected) {
@@ -239,11 +172,27 @@ export function ThreeDScene({
         side,
         pivot,
         basePivotRotation: pivot.rotation.clone(),
-        steerSign: side === "left" ? LEFT_FRONT_STEER_SIGN : RIGHT_FRONT_STEER_SIGN,
+        steerSign:
+          side === "left" ? LEFT_FRONT_STEER_SIGN : RIGHT_FRONT_STEER_SIGN,
       });
     }
 
-    return steering;
+    const rearLeft =
+      rearCandidates
+        .filter((wheel) => wheel.center.x <= 0)
+        .sort((a, b) => a.center.x - b.center.x)[0]?.node ?? null;
+    const rearRight =
+      rearCandidates
+        .filter((wheel) => wheel.center.x > 0)
+        .sort((a, b) => b.center.x - a.center.x)[0]?.node ?? null;
+
+    return {
+      steeringWheels: steering,
+      rearWheels: {
+        left: rearLeft,
+        right: rearRight,
+      },
+    };
   }, [carModel]);
   const carTransform = useMemo(() => {
     const bbox = new THREE.Box3().setFromObject(carModel);
@@ -253,9 +202,11 @@ export function ThreeDScene({
       (TARGET_CAR_FOOTPRINT / horizontalSize) * CAR_SCALE_MULTIPLIER;
     const yOffset = -bbox.min.y * scale;
 
-    return { scale, yOffset };
-  }, [carModel]);
+    const rearTrackHalf = Math.max(size.x * scale * 0.28, 0.45);
+    const rearAxleOffset = Math.max(size.z * scale * 0.33, 0.9);
 
+    return { scale, yOffset, rearTrackHalf, rearAxleOffset };
+  }, [carModel]);
   useFrame(({ camera }, delta) => {
     const vehicle = vehicleRef.current;
     const keys = keysRef.current;
@@ -303,7 +254,7 @@ export function ThreeDScene({
       delta
     );
 
-    for (const wheel of steeringWheels) {
+    for (const wheel of wheelDetection.steeringWheels) {
       wheel.pivot.rotation.copy(wheel.basePivotRotation);
       wheel.pivot.rotation.z += steerAngleRef.current * wheel.steerSign;
     }
@@ -340,6 +291,77 @@ export function ThreeDScene({
     if (exhaustDarkMaterialRef.current) {
       exhaustDarkMaterialRef.current.opacity = 0.05 + exhaustIntensity * 0.09;
       exhaustDarkMaterialRef.current.size = 0.16 + exhaustIntensity * 0.1;
+    }
+
+    const rearLeft = wheelDetection.rearWheels.left;
+    const rearRight = wheelDetection.rearWheels.right;
+    if (keys.s && velocityRef.current >= TIRE_MARK_MIN_SPEED) {
+      right.set(forward.z, 0, -forward.x).normalize();
+      rearCenter
+        .copy(vehicle.position)
+        .addScaledVector(forward, -carTransform.rearAxleOffset);
+      rearLeftPos
+        .copy(rearCenter)
+        .addScaledVector(right, -carTransform.rearTrackHalf);
+      rearRightPos
+        .copy(rearCenter)
+        .addScaledVector(right, carTransform.rearTrackHalf);
+
+      if (rearLeft && rearRight) {
+        rearLeft.getWorldPosition(rearLeftPos);
+        rearRight.getWorldPosition(rearRightPos);
+      }
+
+      const wheelGap = rearLeftPos.distanceTo(rearRightPos);
+      if (wheelGap < carTransform.rearTrackHalf * 1.4) {
+        rearLeftPos
+          .copy(rearCenter)
+          .addScaledVector(right, -carTransform.rearTrackHalf);
+        rearRightPos
+          .copy(rearCenter)
+          .addScaledVector(right, carTransform.rearTrackHalf);
+      }
+
+      if (!rearLeftLastEmitRef.current || !rearRightLastEmitRef.current) {
+        rearLeftLastEmitRef.current = rearLeftPos.clone();
+        rearRightLastEmitRef.current = rearRightPos.clone();
+      }
+
+      const distanceSinceEmit = Math.min(
+        rearLeftPos.distanceTo(rearLeftLastEmitRef.current!),
+        rearRightPos.distanceTo(rearRightLastEmitRef.current!)
+      );
+
+      if (distanceSinceEmit >= TIRE_MARK_SPAWN_DISTANCE) {
+        const now = performance.now() / 1000;
+        const markRotationY = Math.atan2(forward.x, forward.z);
+        const newMarks: TireMark[] = [
+          {
+            id: tireMarkIdRef.current++,
+            bornAt: now,
+            position: [rearLeftPos.x, 0.012, rearLeftPos.z],
+            rotationY: markRotationY,
+          },
+          {
+            id: tireMarkIdRef.current++,
+            bornAt: now,
+            position: [rearRightPos.x, 0.012, rearRightPos.z],
+            rotationY: markRotationY,
+          },
+        ];
+
+        setTireMarks((prev) => [...prev, ...newMarks].slice(-MAX_TIRE_MARKS));
+        rearLeftLastEmitRef.current.copy(rearLeftPos);
+        rearRightLastEmitRef.current.copy(rearRightPos);
+      }
+    }
+
+    const now = performance.now() / 1000;
+    if (now - lastTireCleanupRef.current > 0.2) {
+      lastTireCleanupRef.current = now;
+      setTireMarks((prev) =>
+        prev.filter((mark) => now - mark.bornAt < TIRE_MARK_LIFETIME)
+      );
     }
 
     desiredCamera.set(
@@ -389,102 +411,23 @@ export function ThreeDScene({
 
   return (
     <>
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[10, 14, 7]} intensity={1.2} />
-      <color attach="background" args={["#0b0f14"]} />
-      <fog attach="fog" args={["#0b0f14", 35, 90]} />
-
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        receiveShadow
-        onPointerDown={stopPointer}
-      >
-        <planeGeometry args={[120, 120]} />
-        <meshStandardMaterial color="white" />
-      </mesh>
-
-      <Grid
-        args={[120, 120]}
-        position={[0, 0.03, 0]}
-        cellSize={2}
-        cellThickness={0.5}
-        sectionSize={8}
-        sectionThickness={1.1}
-        cellColor="#223246"
-        sectionColor="#38506a"
-        fadeDistance={95}
-        renderOrder={10}
+      <SceneEnvironment onGroundPointerDown={stopPointer} />
+      <InteractableObjects interactables={interactables} activeSet={activeSet} />
+      <VehicleModel
+        vehicleRef={vehicleRef}
+        carModel={carModel}
+        scale={carTransform.scale}
+        yOffset={carTransform.yOffset}
+        yRotation={CAR_MODEL_Y_ROT_OFFSET}
       />
-
-      {interactables.map((item) => {
-        const isActive = activeSet.has(item.id);
-
-        return (
-          <group key={item.id} position={item.position}>
-            <mesh castShadow>
-              <boxGeometry args={[2, 1.5, 2]} />
-              <meshStandardMaterial
-                color={isActive ? "#f59e0b" : "#4b6078"}
-                emissive={isActive ? "#5a3a05" : "#000000"}
-              />
-            </mesh>
-            <Html position={[0, 1.5, 0]} center>
-              <div className="rounded bg-black/60 px-2 py-1 text-xs text-white backdrop-blur-sm">
-                {item.name}
-              </div>
-            </Html>
-          </group>
-        );
-      })}
-
-      <group ref={vehicleRef} position={[0, 0.01, 0]}>
-        <primitive
-          object={carModel}
-          scale={carTransform.scale}
-          position-y={carTransform.yOffset}
-          rotation-y={CAR_MODEL_Y_ROT_OFFSET}
-        />
-      </group>
-
-      <points ref={exhaustLightPointsRef} frustumCulled={false} visible={false}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[exhaustParticles.positions, 3]}
-            usage={THREE.DynamicDrawUsage}
-          />
-        </bufferGeometry>
-        <pointsMaterial
-          ref={exhaustLightMaterialRef}
-          color="#3a3f46"
-          size={0.2}
-          sizeAttenuation
-          transparent
-          opacity={0.12}
-          depthWrite={false}
-          depthTest={false}
-        />
-      </points>
-
-      <points ref={exhaustDarkPointsRef} frustumCulled={false} visible={false}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[exhaustParticles.positions, 3]}
-            usage={THREE.DynamicDrawUsage}
-          />
-        </bufferGeometry>
-        <pointsMaterial
-          ref={exhaustDarkMaterialRef}
-          color="#191c20"
-          size={0.16}
-          sizeAttenuation
-          transparent
-          opacity={0.06}
-          depthWrite={false}
-          depthTest={false}
-        />
-      </points>
+      <ExhaustEffect
+        exhaustParticles={exhaustParticles}
+        lightPointsRef={exhaustLightPointsRef}
+        darkPointsRef={exhaustDarkPointsRef}
+        lightMaterialRef={exhaustLightMaterialRef}
+        darkMaterialRef={exhaustDarkMaterialRef}
+      />
+      <TireMarks marks={tireMarks} lifetime={TIRE_MARK_LIFETIME} />
     </>
   );
 }
