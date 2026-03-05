@@ -1,10 +1,4 @@
-import { type ThreeEvent } from "@react-three/fiber";
-
-type SceneEnvironmentProps = {
-  onGroundPointerDown: (event: ThreeEvent<PointerEvent>) => void;
-};
-
-export function SceneEnvironment({ onGroundPointerDown }: SceneEnvironmentProps) {
+export function SceneEnvironment() {
   return (
     <>
       <ambientLight intensity={0.55} />
@@ -15,7 +9,7 @@ export function SceneEnvironment({ onGroundPointerDown }: SceneEnvironmentProps)
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
-        onPointerDown={onGroundPointerDown}
+        onPointerDown={(event) => event.stopPropagation()}
       >
         <planeGeometry args={[220, 220]} />
         <meshStandardMaterial color="#ebe6da" />
